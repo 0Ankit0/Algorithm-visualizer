@@ -2,6 +2,10 @@
 
 import { useEffect, useMemo, useState } from 'react';
 
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+import { cn } from '@/lib/utils';
 import type { VisualizationStep } from '@/lib/types';
 
 type StepViewerProps = {
@@ -21,37 +25,47 @@ export function StepViewer({ title, query, steps }: StepViewerProps) {
 
   if (!steps.length) {
     return (
-      <div className="card">
-        <h3>{title}</h3>
-        <p>No steps available.</p>
-      </div>
+      <Card>
+        <h3 className="text-lg font-semibold">{title}</h3>
+        <p className="mt-2 text-sm text-zinc-400">No steps available.</p>
+      </Card>
     );
   }
 
   return (
-    <div className="card">
-      <span className="badge">{title}</span>
-      <p style={{ marginTop: 0, color: '#a1a1aa' }}>{query}</p>
-      <h3 style={{ marginTop: '0.5rem' }}>
+    <Card>
+      <Badge>{title}</Badge>
+      <p className="mt-2 text-sm text-zinc-400">{query}</p>
+      <h3 className="mt-3 text-lg font-semibold">
         Step {step.index}: {step.title}
       </h3>
-      <p>{step.explanation}</p>
+      <p className="mt-2 text-sm text-zinc-200">{step.explanation}</p>
 
-      <div className="array">
+      <div className="mt-3 flex flex-wrap gap-2">
         {step.state.map((value, idx) => (
-          <div key={`${step.index}-${idx}`} className={`array-item ${step.highlighted_indices.includes(idx) ? 'active' : ''}`}>
+          <div
+            key={`${step.index}-${idx}`}
+            className={cn(
+              'min-w-11 rounded-md border border-transparent bg-zinc-800 px-3 py-2 text-center text-sm',
+              step.highlighted_indices.includes(idx) && 'border-blue-400 bg-blue-900/70',
+            )}
+          >
             {value}
           </div>
         ))}
       </div>
 
-      <div className="controls">
-        <button onClick={() => setCurrentStep((prev) => Math.max(prev - 1, 0))}>Previous</button>
-        <button onClick={() => setCurrentStep((prev) => Math.min(prev + 1, steps.length - 1))}>Next</button>
+      <div className="mt-4 flex gap-2">
+        <Button variant="outline" onClick={() => setCurrentStep((prev) => Math.max(prev - 1, 0))}>
+          Previous
+        </Button>
+        <Button variant="default" onClick={() => setCurrentStep((prev) => Math.min(prev + 1, steps.length - 1))}>
+          Next
+        </Button>
       </div>
-      <small style={{ color: '#a1a1aa' }}>
+      <small className="mt-2 block text-zinc-400">
         {currentStep + 1} / {steps.length}
       </small>
-    </div>
+    </Card>
   );
 }

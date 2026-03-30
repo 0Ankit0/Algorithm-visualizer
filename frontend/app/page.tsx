@@ -4,6 +4,12 @@ import { useEffect, useMemo, useState } from 'react';
 
 import { ModeTabs } from '@/components/ModeTabs';
 import { StepViewer } from '@/components/StepViewer';
+import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Select } from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
 import type {
   AlgorithmType,
   CreateCustomVisualizerRequest,
@@ -284,10 +290,11 @@ export default function HomePage() {
   }
 
   return (
-    <main>
-      <h1 style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>Algorithm Query Visualiser</h1>
-      <p style={{ color: '#a1a1aa', marginTop: 0 }}>
-        Learn from prebuilt walkthroughs, generate fresh traces from input numbers, and save your own step-by-step algorithm/query visualisers.
+    <main className="mx-auto max-w-6xl space-y-4 px-4 pb-16 pt-8">
+      <h1 className="text-3xl font-bold">Algorithm Query Visualiser</h1>
+      <p className="max-w-4xl text-zinc-400">
+        Learn from prebuilt walkthroughs, generate fresh traces from input numbers, and save your own step-by-step algorithm/query
+        visualisers.
       </p>
 
       <ModeTabs
@@ -301,192 +308,194 @@ export default function HomePage() {
       />
 
       {activeMode === 'study' ? (
-        <section className="grid two">
-          <div className="card">
-            <h2>Study Mode</h2>
-            <p style={{ color: '#a1a1aa' }}>Pre-built visualisers with detailed explanations.</p>
-            {studyLoading ? <p>Loading...</p> : null}
+        <section className="grid gap-4 lg:grid-cols-2">
+          <Card>
+            <h2 className="text-xl font-semibold">Study Mode</h2>
+            <p className="mb-4 mt-1 text-sm text-zinc-400">Pre-built visualisers with detailed explanations.</p>
+            {studyLoading ? <p className="mb-3 text-sm text-zinc-300">Loading...</p> : null}
 
-            <div style={{ display: 'grid', gap: '0.5rem' }}>
+            <div className="grid gap-2">
               {studyItems.map((item) => (
-                <button key={item.id} className={item.id === selectedStudyId ? 'primary' : ''} onClick={() => setSelectedStudyId(item.id)}>
-                  <strong>{item.name}</strong>
-                  <br />
-                  <span style={{ color: '#d4d4d8' }}>{item.description}</span>
-                </button>
+                <Button key={item.id} variant={item.id === selectedStudyId ? 'default' : 'outline'} onClick={() => setSelectedStudyId(item.id)}>
+                  <span className="text-left">
+                    <strong className="block">{item.name}</strong>
+                    <span className="text-xs text-zinc-300">{item.description}</span>
+                  </span>
+                </Button>
               ))}
             </div>
-          </div>
+          </Card>
 
           {selectedStudy ? <StepViewer title={selectedStudy.name} query={selectedStudy.query} steps={selectedStudy.steps} /> : null}
         </section>
       ) : null}
 
       {activeMode === 'generate' ? (
-        <section className="grid two">
-          <div className="card">
-            <h2>Generate + Build</h2>
-            <p style={{ color: '#a1a1aa' }}>
+        <section className="grid gap-4 lg:grid-cols-2">
+          <Card>
+            <h2 className="text-xl font-semibold">Generate + Build</h2>
+            <p className="mb-4 mt-1 text-sm text-zinc-400">
               Auto-generate steps from algorithm input, then customize/edit the steps and save as your own visualizer.
             </p>
 
-            <div style={{ display: 'grid', gap: '0.75rem' }}>
-              <label>
+            <div className="grid gap-3">
+              <Label>
                 Algorithm
-                <select value={generateAlgorithm} onChange={(event) => setGenerateAlgorithm(event.target.value as AlgorithmType)}>
+                <Select value={generateAlgorithm} onChange={(event) => setGenerateAlgorithm(event.target.value as AlgorithmType)}>
                   {algorithmOptions.map((option) => (
                     <option key={option.value} value={option.value}>
                       {option.label}
                     </option>
                   ))}
-                </select>
-              </label>
+                </Select>
+              </Label>
 
-              <label>
+              <Label>
                 Question
-                <textarea value={generateQuestion} rows={2} onChange={(event) => setGenerateQuestion(event.target.value)} />
-              </label>
+                <Textarea value={generateQuestion} rows={2} onChange={(event) => setGenerateQuestion(event.target.value)} />
+              </Label>
 
-              <label>
+              <Label>
                 Numbers (comma separated)
-                <input value={generateNumbersInput} onChange={(event) => setGenerateNumbersInput(event.target.value)} />
-              </label>
+                <Input value={generateNumbersInput} onChange={(event) => setGenerateNumbersInput(event.target.value)} />
+              </Label>
 
               {generateAlgorithm !== 'bubble_sort' ? (
-                <label>
+                <Label>
                   Target
-                  <input value={generateTargetInput} onChange={(event) => setGenerateTargetInput(event.target.value)} />
-                </label>
+                  <Input value={generateTargetInput} onChange={(event) => setGenerateTargetInput(event.target.value)} />
+                </Label>
               ) : null}
 
-              <button className="primary" onClick={handleGenerateVisualization}>
-                Generate Visualization
-              </button>
-              {generateError ? <p style={{ color: '#f87171', marginBottom: 0 }}>{generateError}</p> : null}
+              <Button onClick={handleGenerateVisualization}>Generate Visualization</Button>
+              {generateError ? <p className="mb-0 text-sm text-red-400">{generateError}</p> : null}
             </div>
-          </div>
+          </Card>
 
           {generatedVisualization ? (
             <StepViewer title="Generated Visualization" query={generatedVisualization.query} steps={generatedVisualization.steps} />
           ) : (
-            <div className="card">
-              <h3>No generated output yet</h3>
-              <p style={{ color: '#a1a1aa' }}>Generate a visualization first, then refine and save it below.</p>
-            </div>
+            <Card>
+              <h3 className="text-lg font-semibold">No generated output yet</h3>
+              <p className="mt-2 text-sm text-zinc-400">Generate a visualization first, then refine and save it below.</p>
+            </Card>
           )}
 
-          <div className="card" style={{ gridColumn: '1 / -1' }}>
-            <h3>Custom Visualizer Builder</h3>
-            <p style={{ color: '#a1a1aa' }}>Edit metadata and steps, then save to the backend.</p>
+          <Card className="lg:col-span-2">
+            <h3 className="text-lg font-semibold">Custom Visualizer Builder</h3>
+            <p className="mb-4 mt-1 text-sm text-zinc-400">Edit metadata and steps, then save to the backend.</p>
 
-            <div className="grid two">
-              <label>
+            <div className="grid gap-3 lg:grid-cols-2">
+              <Label>
                 Title
-                <input value={builderTitle} onChange={(event) => setBuilderTitle(event.target.value)} />
-              </label>
+                <Input value={builderTitle} onChange={(event) => setBuilderTitle(event.target.value)} />
+              </Label>
 
-              <label>
+              <Label>
                 Algorithm
-                <select value={builderAlgorithm} onChange={(event) => setBuilderAlgorithm(event.target.value as AlgorithmType)}>
+                <Select value={builderAlgorithm} onChange={(event) => setBuilderAlgorithm(event.target.value as AlgorithmType)}>
                   {algorithmOptions.map((option) => (
                     <option key={option.value} value={option.value}>
                       {option.label}
                     </option>
                   ))}
-                </select>
-              </label>
+                </Select>
+              </Label>
             </div>
 
-            <label>
+            <Label className="mt-3">
               Question
-              <textarea value={builderQuestion} rows={2} onChange={(event) => setBuilderQuestion(event.target.value)} />
-            </label>
-            <label>
+              <Textarea value={builderQuestion} rows={2} onChange={(event) => setBuilderQuestion(event.target.value)} />
+            </Label>
+            <Label className="mt-3">
               Query
-              <input value={builderQuery} onChange={(event) => setBuilderQuery(event.target.value)} />
-            </label>
-            <label>
+              <Input value={builderQuery} onChange={(event) => setBuilderQuery(event.target.value)} />
+            </Label>
+            <Label className="mt-3">
               Summary
-              <textarea value={builderSummary} rows={2} onChange={(event) => setBuilderSummary(event.target.value)} />
-            </label>
+              <Textarea value={builderSummary} rows={2} onChange={(event) => setBuilderSummary(event.target.value)} />
+            </Label>
 
-            <h4>Steps</h4>
-            <div style={{ display: 'grid', gap: '0.75rem' }}>
+            <h4 className="mb-3 mt-4 font-semibold">Steps</h4>
+            <div className="grid gap-3">
               {builderSteps.map((step, idx) => (
-                <div className="card" key={`builder-step-${idx}`}>
-                  <div className="grid two">
-                    <label>
+                <Card key={`builder-step-${idx}`}>
+                  <div className="grid gap-3 lg:grid-cols-2">
+                    <Label>
                       Step title
-                      <input value={step.title} onChange={(event) => updateBuilderStep(idx, 'title', event.target.value)} />
-                    </label>
-                    <label>
+                      <Input value={step.title} onChange={(event) => updateBuilderStep(idx, 'title', event.target.value)} />
+                    </Label>
+                    <Label>
                       State values (comma separated)
-                      <input value={step.stateInput} onChange={(event) => updateBuilderStep(idx, 'stateInput', event.target.value)} />
-                    </label>
+                      <Input value={step.stateInput} onChange={(event) => updateBuilderStep(idx, 'stateInput', event.target.value)} />
+                    </Label>
                   </div>
 
-                  <label>
+                  <Label className="mt-3">
                     Highlighted indices (comma separated)
-                    <input
+                    <Input
                       value={step.highlightedInput}
                       onChange={(event) => updateBuilderStep(idx, 'highlightedInput', event.target.value)}
                     />
-                  </label>
+                  </Label>
 
-                  <label>
+                  <Label className="mt-3">
                     Explanation
-                    <textarea value={step.explanation} rows={2} onChange={(event) => updateBuilderStep(idx, 'explanation', event.target.value)} />
-                  </label>
+                    <Textarea value={step.explanation} rows={2} onChange={(event) => updateBuilderStep(idx, 'explanation', event.target.value)} />
+                  </Label>
 
-                  <button onClick={() => removeBuilderStep(idx)}>Remove step</button>
-                </div>
+                  <Button className="mt-3" variant="outline" onClick={() => removeBuilderStep(idx)}>
+                    Remove step
+                  </Button>
+                </Card>
               ))}
             </div>
 
-            <div className="controls">
-              <button onClick={addBuilderStep}>Add Step</button>
-              <button className="primary" onClick={saveCustomVisualizer}>
-                Save Custom Visualizer
-              </button>
+            <div className="mt-4 flex flex-wrap gap-2">
+              <Button variant="secondary" onClick={addBuilderStep}>
+                Add Step
+              </Button>
+              <Button onClick={saveCustomVisualizer}>Save Custom Visualizer</Button>
             </div>
-            {builderMessage ? <p style={{ color: '#86efac' }}>{builderMessage}</p> : null}
-          </div>
+            {builderMessage ? <p className="mt-2 text-sm text-emerald-300">{builderMessage}</p> : null}
+          </Card>
         </section>
       ) : null}
 
       {activeMode === 'saved' ? (
-        <section className="grid two">
-          <div className="card">
-            <h2>Saved Visualizers</h2>
-            <p style={{ color: '#a1a1aa' }}>Run or delete previously saved custom visualizers.</p>
-            {savedLoading ? <p>Loading...</p> : null}
+        <section className="grid gap-4 lg:grid-cols-2">
+          <Card>
+            <h2 className="text-xl font-semibold">Saved Visualizers</h2>
+            <p className="mb-4 mt-1 text-sm text-zinc-400">Run or delete previously saved custom visualizers.</p>
+            {savedLoading ? <p className="mb-3 text-sm text-zinc-300">Loading...</p> : null}
 
-            <div style={{ display: 'grid', gap: '0.5rem' }}>
+            <div className="grid gap-2">
               {savedVisualizers.map((item) => (
-                <button key={item.id} className={item.id === selectedSavedId ? 'primary' : ''} onClick={() => setSelectedSavedId(item.id)}>
-                  <strong>{item.title}</strong>
-                  <br />
-                  <span style={{ color: '#d4d4d8' }}>{item.question}</span>
-                </button>
+                <Button key={item.id} variant={item.id === selectedSavedId ? 'default' : 'outline'} onClick={() => setSelectedSavedId(item.id)}>
+                  <span className="text-left">
+                    <strong className="block">{item.title}</strong>
+                    <span className="text-xs text-zinc-300">{item.question}</span>
+                  </span>
+                </Button>
               ))}
             </div>
 
-            <div className="controls">
-              <button className="primary" onClick={runSavedVisualizer}>
-                Run Selected
-              </button>
-              <button onClick={deleteSavedVisualizer}>Delete Selected</button>
+            <div className="mt-4 flex flex-wrap gap-2">
+              <Button onClick={runSavedVisualizer}>Run Selected</Button>
+              <Button variant="outline" onClick={deleteSavedVisualizer}>
+                Delete Selected
+              </Button>
             </div>
-            {savedError ? <p style={{ color: '#f87171' }}>{savedError}</p> : null}
-          </div>
+            {savedError ? <p className="mt-2 text-sm text-red-400">{savedError}</p> : null}
+          </Card>
 
           {savedRunResult ? (
             <StepViewer title={selectedSaved?.title ?? 'Saved Visualization'} query={savedRunResult.query} steps={savedRunResult.steps} />
           ) : (
-            <div className="card">
-              <h3>Run a saved visualizer</h3>
-              <p style={{ color: '#a1a1aa' }}>Pick one from the list and click Run Selected.</p>
-            </div>
+            <Card>
+              <h3 className="text-lg font-semibold">Run a saved visualizer</h3>
+              <p className="mt-2 text-sm text-zinc-400">Pick one from the list and click Run Selected.</p>
+            </Card>
           )}
         </section>
       ) : null}

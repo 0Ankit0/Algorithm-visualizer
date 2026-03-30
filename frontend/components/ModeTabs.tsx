@@ -1,5 +1,8 @@
 'use client';
 
+import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+
 type TabItem = {
   key: string;
   label: string;
@@ -13,12 +16,12 @@ type ModeTabsProps = {
 
 export function ModeTabs({ activeMode, setActiveMode, tabs }: ModeTabsProps) {
   return (
-    <div className="card" style={{ display: 'flex', gap: '0.75rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
+    <Card className="mb-4 flex flex-wrap gap-3">
       {tabs.map((tab) => (
-        <button key={tab.key} className={activeMode === tab.key ? 'primary' : ''} onClick={() => setActiveMode(tab.key)}>
+        <Button key={tab.key} variant={activeMode === tab.key ? 'default' : 'outline'} onClick={() => setActiveMode(tab.key)}>
           {tab.label}
-        </button>
+        </Button>
       ))}
-    </div>
+    </Card>
   );
 }
