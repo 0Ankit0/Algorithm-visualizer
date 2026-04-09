@@ -33,7 +33,26 @@ type BuilderStep = {
 const algorithmOptions: Array<{ label: string; value: AlgorithmType }> = [
   { label: 'Linear Search', value: 'linear_search' },
   { label: 'Binary Search', value: 'binary_search' },
+  { label: 'Jump Search', value: 'jump_search' },
+  { label: 'Interpolation Search', value: 'interpolation_search' },
   { label: 'Bubble Sort', value: 'bubble_sort' },
+  { label: 'Insertion Sort', value: 'insertion_sort' },
+  { label: 'Selection Sort', value: 'selection_sort' },
+  { label: 'Merge Sort', value: 'merge_sort' },
+  { label: 'Quick Sort', value: 'quick_sort' },
+  { label: 'Heap Sort', value: 'heap_sort' },
+  { label: 'BFS', value: 'bfs' },
+  { label: 'DFS', value: 'dfs' },
+  { label: 'Dijkstra', value: 'dijkstra' },
+  { label: 'A*', value: 'a_star' },
+  { label: 'Fibonacci (Tabulation)', value: 'fibonacci_tabulation' },
+  { label: 'Fibonacci (Memoization)', value: 'fibonacci_memoization' },
+  { label: '0/1 Knapsack', value: 'knapsack_01' },
+  { label: 'LCS', value: 'lcs' },
+  { label: 'BST Operations', value: 'bst_operations' },
+  { label: 'Heap Operations', value: 'heap_operations' },
+  { label: 'KMP', value: 'kmp' },
+  { label: 'Rabin-Karp', value: 'rabin_karp' },
 ];
 
 function parseCsvNumbers(input: string): number[] {
@@ -43,11 +62,22 @@ function parseCsvNumbers(input: string): number[] {
     .filter((value) => Number.isFinite(value));
 }
 
+function parseCsvValues(input: string): Array<number | string> {
+  return input
+    .split(',')
+    .map((value) => value.trim())
+    .filter((value) => value.length > 0)
+    .map((value) => {
+      const maybeNumber = Number(value);
+      return Number.isFinite(maybeNumber) ? maybeNumber : value;
+    });
+}
+
 function toVisualizationSteps(builderSteps: BuilderStep[]): VisualizationStep[] {
   return builderSteps.map((step, idx) => ({
     index: idx + 1,
     title: step.title,
-    state: parseCsvNumbers(step.stateInput),
+    state: parseCsvValues(step.stateInput),
     explanation: step.explanation,
     highlighted_indices: parseCsvNumbers(step.highlightedInput),
   }));
@@ -62,8 +92,7 @@ export default function HomePage() {
 
   const [generateAlgorithm, setGenerateAlgorithm] = useState<AlgorithmType>('linear_search');
   const [generateQuestion, setGenerateQuestion] = useState('Where can I find 9?');
-  const [generateNumbersInput, setGenerateNumbersInput] = useState('3, 9, 1, 12, 7');
-  const [generateTargetInput, setGenerateTargetInput] = useState('9');
+  const [generatePayloadInput, setGeneratePayloadInput] = useState('{\n  "numbers": [3, 9, 1, 12, 7],\n  "target": 9\n}');
   const [generatedVisualization, setGeneratedVisualization] = useState<VisualizationResponse | null>(null);
   const [generateError, setGenerateError] = useState<string | null>(null);
 
@@ -130,36 +159,26 @@ export default function HomePage() {
   async function handleGenerateVisualization() {
     setGenerateError(null);
 
-    const numbers = parseCsvNumbers(generateNumbersInput);
-    if (numbers.length === 0) {
-      setGenerateError('Please provide at least one valid number.');
+    let parsedPayload: Record<string, unknown> = {};
+    try {
+      parsedPayload = generatePayloadInput.trim() ? (JSON.parse(generatePayloadInput) as Record<string, unknown>) : {};
+    } catch {
+      setGenerateError('Payload must be valid JSON.');
       return;
     }
 
-    const payload: {
-      algorithm: AlgorithmType;
-      question: string;
-      numbers: number[];
-      target?: number;
-    } = {
+    const requestBody = {
       algorithm: generateAlgorithm,
       question: generateQuestion,
-      numbers,
+      numbers: Array.isArray(parsedPayload.numbers) ? (parsedPayload.numbers as number[]) : [],
+      target: typeof parsedPayload.target === 'number' ? parsedPayload.target : undefined,
+      payload: parsedPayload,
     };
-
-    if (generateAlgorithm !== 'bubble_sort') {
-      const target = Number(generateTargetInput);
-      if (!Number.isFinite(target)) {
-        setGenerateError('Target is required for search algorithms.');
-        return;
-      }
-      payload.target = target;
-    }
 
     const response = await fetch(`${API_BASE}/api/custom-visualize`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
+      body: JSON.stringify(requestBody),
     });
 
     const data = (await response.json()) as VisualizationResponse | { detail?: string };
@@ -356,16 +375,9 @@ export default function HomePage() {
               </Label>
 
               <Label>
-                Numbers (comma separated)
-                <Input value={generateNumbersInput} onChange={(event) => setGenerateNumbersInput(event.target.value)} />
+                Algorithm Payload (JSON)
+                <Textarea value={generatePayloadInput} rows={8} onChange={(event) => setGeneratePayloadInput(event.target.value)} />
               </Label>
-
-              {generateAlgorithm !== 'bubble_sort' ? (
-                <Label>
-                  Target
-                  <Input value={generateTargetInput} onChange={(event) => setGenerateTargetInput(event.target.value)} />
-                </Label>
-              ) : null}
 
               <Button onClick={handleGenerateVisualization}>Generate Visualization</Button>
               {generateError ? <p className="mb-0 text-sm text-red-400">{generateError}</p> : null}

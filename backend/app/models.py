@@ -1,17 +1,40 @@
 from __future__ import annotations
 
-from typing import Literal
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field, model_validator
 
 
-AlgorithmType = Literal["linear_search", "binary_search", "bubble_sort"]
+AlgorithmType = Literal[
+    "linear_search",
+    "binary_search",
+    "jump_search",
+    "interpolation_search",
+    "bubble_sort",
+    "insertion_sort",
+    "selection_sort",
+    "merge_sort",
+    "quick_sort",
+    "heap_sort",
+    "bfs",
+    "dfs",
+    "dijkstra",
+    "a_star",
+    "fibonacci_tabulation",
+    "fibonacci_memoization",
+    "knapsack_01",
+    "lcs",
+    "bst_operations",
+    "heap_operations",
+    "kmp",
+    "rabin_karp",
+]
 
 
 class VisualizationStep(BaseModel):
     index: int = Field(..., description="Step number starting at 1", ge=1)
     title: str = Field(..., min_length=1)
-    state: list[int]
+    state: list[int | str]
     explanation: str = Field(..., min_length=1)
     highlighted_indices: list[int] = Field(default_factory=list)
 
@@ -30,8 +53,9 @@ class StudyItem(BaseModel):
 class CustomVisualizeRequest(BaseModel):
     algorithm: AlgorithmType
     question: str = Field(..., min_length=1)
-    numbers: list[int]
+    numbers: list[int] = Field(default_factory=list)
     target: int | None = None
+    payload: dict[str, Any] = Field(default_factory=dict)
 
 
 class VisualizationResponse(BaseModel):

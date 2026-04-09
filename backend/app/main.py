@@ -36,7 +36,13 @@ def health() -> dict[str, str]:
 
 @app.get("/api/algorithms", response_model=list[AlgorithmType])
 def list_algorithms() -> list[AlgorithmType]:
-    return ["linear_search", "binary_search", "bubble_sort"]
+    return [
+        "linear_search", "binary_search", "jump_search", "interpolation_search",
+        "bubble_sort", "insertion_sort", "selection_sort", "merge_sort", "quick_sort", "heap_sort",
+        "bfs", "dfs", "dijkstra", "a_star",
+        "fibonacci_tabulation", "fibonacci_memoization", "knapsack_01", "lcs",
+        "bst_operations", "heap_operations", "kmp", "rabin_karp",
+    ]
 
 
 @app.get("/api/study-mode", response_model=list[StudyItem])
@@ -60,6 +66,7 @@ def custom_visualize(payload: CustomVisualizeRequest) -> VisualizationResponse:
             question=payload.question,
             numbers=payload.numbers,
             target=payload.target,
+            payload=payload.payload,
         )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
