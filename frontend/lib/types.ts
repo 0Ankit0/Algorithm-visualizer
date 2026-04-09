@@ -143,3 +143,29 @@ export type CreateCustomVisualizerRequest = {
   summary: string;
   steps: VisualizationStep[];
 };
+
+export type AlgorithmFieldType = 'number_list' | 'number' | 'string' | 'string_list' | 'edge_list' | 'weighted_edge_list' | 'matrix';
+
+export type AlgorithmInputField = {
+  key: string;
+  label: string;
+  type: AlgorithmFieldType;
+  required: boolean;
+  placeholder?: string | null;
+  example?: string | null;
+  help_text?: string | null;
+};
+
+export type AlgorithmPreset = {
+  name: string;
+  question: string;
+  payload: Record<string, unknown>;
+};
+
+export type AlgorithmDescriptor = {
+  algorithm: AlgorithmType;
+  label: string;
+  category: 'search_sort' | 'graph' | 'dp_table' | 'string' | 'other';
+  fields: AlgorithmInputField[];
+  sample_presets: AlgorithmPreset[];
+};

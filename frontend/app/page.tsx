@@ -10,7 +10,18 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { getStepHighlightedIndices, getStepValues, type AlgorithmType, type CreateCustomVisualizerRequest, type CustomVisualizer, type StudyItem, type VisualizationResponse, type VisualizationStep } from '@/lib/types';
+import {
+  getStepHighlightedIndices,
+  getStepValues,
+  type AlgorithmDescriptor,
+  type AlgorithmInputField,
+  type AlgorithmType,
+  type CreateCustomVisualizerRequest,
+  type CustomVisualizer,
+  type StudyItem,
+  type VisualizationResponse,
+  type VisualizationStep,
+} from '@/lib/types';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? 'http://localhost:8000';
 
@@ -23,30 +34,22 @@ type BuilderStep = {
   explanation: string;
 };
 
-const algorithmOptions: Array<{ label: string; value: AlgorithmType }> = [
-  { label: 'Linear Search', value: 'linear_search' },
-  { label: 'Binary Search', value: 'binary_search' },
-  { label: 'Jump Search', value: 'jump_search' },
-  { label: 'Interpolation Search', value: 'interpolation_search' },
-  { label: 'Bubble Sort', value: 'bubble_sort' },
-  { label: 'Insertion Sort', value: 'insertion_sort' },
-  { label: 'Selection Sort', value: 'selection_sort' },
-  { label: 'Merge Sort', value: 'merge_sort' },
-  { label: 'Quick Sort', value: 'quick_sort' },
-  { label: 'Heap Sort', value: 'heap_sort' },
-  { label: 'BFS', value: 'bfs' },
-  { label: 'DFS', value: 'dfs' },
-  { label: 'Dijkstra', value: 'dijkstra' },
-  { label: 'A*', value: 'a_star' },
-  { label: 'Fibonacci (Tabulation)', value: 'fibonacci_tabulation' },
-  { label: 'Fibonacci (Memoization)', value: 'fibonacci_memoization' },
-  { label: '0/1 Knapsack', value: 'knapsack_01' },
-  { label: 'LCS', value: 'lcs' },
-  { label: 'BST Operations', value: 'bst_operations' },
-  { label: 'Heap Operations', value: 'heap_operations' },
-  { label: 'KMP', value: 'kmp' },
-  { label: 'Rabin-Karp', value: 'rabin_karp' },
+const fallbackAlgorithmOptions: Array<{ label: string; value: AlgorithmType }> = [
+  { label: 'Linear Search', value: 'linear_search' }, { label: 'Binary Search', value: 'binary_search' }, { label: 'Jump Search', value: 'jump_search' },
+  { label: 'Interpolation Search', value: 'interpolation_search' }, { label: 'Bubble Sort', value: 'bubble_sort' }, { label: 'Insertion Sort', value: 'insertion_sort' },
+  { label: 'Selection Sort', value: 'selection_sort' }, { label: 'Merge Sort', value: 'merge_sort' }, { label: 'Quick Sort', value: 'quick_sort' }, { label: 'Heap Sort', value: 'heap_sort' },
+  { label: 'BFS', value: 'bfs' }, { label: 'DFS', value: 'dfs' }, { label: 'Dijkstra', value: 'dijkstra' }, { label: 'A*', value: 'a_star' },
+  { label: 'Fibonacci (Tabulation)', value: 'fibonacci_tabulation' }, { label: 'Fibonacci (Memoization)', value: 'fibonacci_memoization' }, { label: '0/1 Knapsack', value: 'knapsack_01' },
+  { label: 'LCS', value: 'lcs' }, { label: 'BST Operations', value: 'bst_operations' }, { label: 'Heap Operations', value: 'heap_operations' }, { label: 'KMP', value: 'kmp' }, { label: 'Rabin-Karp', value: 'rabin_karp' },
 ];
+
+const fallbackAlgorithmDescriptors: AlgorithmDescriptor[] = fallbackAlgorithmOptions.map((item) => ({
+  algorithm: item.value,
+  label: item.label,
+  category: 'other',
+  fields: [],
+  sample_presets: [],
+}));
 
 function parseCsvNumbers(input: string): number[] {
   return input
@@ -76,6 +79,50 @@ function toVisualizationSteps(builderSteps: BuilderStep[]): VisualizationStep[] 
   }));
 }
 
+function stringifyPresetValue(value: unknown, type: AlgorithmInputField['type']): string {
+  if (type === 'number_list' && Array.isArray(value)) return value.join(', ');
+  if (type === 'string_list' && Array.isArray(value)) return value.map(String).join(', ');
+  if (type === 'edge_list' && Array.isArray(value)) return value.map((edge) => (Array.isArray(edge) ? `${edge[0]}-${edge[1]}` : '')).filter(Boolean).join(', ');
+  if (type === 'weighted_edge_list' && Array.isArray(value)) return value.map((edge) => (Array.isArray(edge) ? `${edge[0]}-${edge[1]}:${edge[2]}` : '')).filter(Boolean).join(', ');
+  if (typeof value === 'string' || typeof value === 'number') return String(value);
+  return '';
+}
+
+function parseFieldInput(type: AlgorithmInputField['type'], rawInput: string): unknown {
+  const value = rawInput.trim();
+  if (!value) return undefined;
+  if (type === 'number') return Number(value);
+  if (type === 'number_list') return parseCsvNumbers(value);
+  if (type === 'string_list') return value.split(',').map((part) => part.trim()).filter(Boolean);
+  if (type === 'edge_list') {
+    return value.split(',').map((pair) => pair.trim()).filter(Boolean).map((pair) => pair.split('-').map((node) => node.trim()));
+  }
+  if (type === 'weighted_edge_list') {
+    return value.split(',').map((part) => part.trim()).filter(Boolean).map((part) => {
+      const [pair, weight] = part.split(':');
+      const [from, to] = pair.split('-').map((node) => node.trim());
+      return [from, to, Number(weight)];
+    });
+  }
+  return value;
+}
+
+function validateFieldInput(field: AlgorithmInputField, rawInput: string): string | null {
+  const value = rawInput.trim();
+  if (!value) return field.required ? `Required. Example: ${field.example ?? 'see placeholder'}` : null;
+  if (field.type === 'number' && Number.isNaN(Number(value))) return `Please enter a number. Example: ${field.example ?? '9'}`;
+  if (field.type === 'number_list' && parseCsvNumbers(value).length === 0) return `Use comma-separated numbers. Example: ${field.example ?? '3, 9, 1'}`;
+  if (field.type === 'edge_list') {
+    const ok = value.split(',').every((part) => part.includes('-'));
+    if (!ok) return `Use u-v pairs separated by commas. Example: ${field.example ?? 'A-B, A-C'}`;
+  }
+  if (field.type === 'weighted_edge_list') {
+    const ok = value.split(',').every((part) => part.includes('-') && part.includes(':') && !Number.isNaN(Number(part.split(':')[1])));
+    if (!ok) return `Use u-v:w format. Example: ${field.example ?? 'A-B:4, B-C:2'}`;
+  }
+  return null;
+}
+
 export default function HomePage() {
   const [activeMode, setActiveMode] = useState<MainMode>('study');
 
@@ -85,7 +132,8 @@ export default function HomePage() {
 
   const [generateAlgorithm, setGenerateAlgorithm] = useState<AlgorithmType>('linear_search');
   const [generateQuestion, setGenerateQuestion] = useState('Where can I find 9?');
-  const [generatePayloadInput, setGeneratePayloadInput] = useState('{\n  "numbers": [3, 9, 1, 12, 7],\n  "target": 9\n}');
+  const [algorithmDescriptors, setAlgorithmDescriptors] = useState<AlgorithmDescriptor[]>(fallbackAlgorithmDescriptors);
+  const [generateFieldInputs, setGenerateFieldInputs] = useState<Record<string, string>>({});
   const [generatedVisualization, setGeneratedVisualization] = useState<VisualizationResponse | null>(null);
   const [generateError, setGenerateError] = useState<string | null>(null);
 
@@ -111,9 +159,30 @@ export default function HomePage() {
   const [builderMessage, setBuilderMessage] = useState<string | null>(null);
 
   useEffect(() => {
+    void fetchAlgorithms();
     void fetchStudyMode();
     void fetchSavedVisualizers();
   }, []);
+
+  async function fetchAlgorithms() {
+    const response = await fetch(`${API_BASE}/api/algorithms`);
+    const data = (await response.json()) as Array<AlgorithmDescriptor | AlgorithmType>;
+    if (Array.isArray(data) && data.length > 0 && typeof data[0] !== 'string') {
+      setAlgorithmDescriptors(data as AlgorithmDescriptor[]);
+      const first = (data[0] as AlgorithmDescriptor).algorithm;
+      setGenerateAlgorithm(first);
+      return;
+    }
+    setAlgorithmDescriptors(
+      (data as AlgorithmType[]).map((algorithm) => ({
+        algorithm,
+        label: fallbackAlgorithmOptions.find((option) => option.value === algorithm)?.label ?? algorithm,
+        category: 'other',
+        fields: [],
+        sample_presets: [],
+      })),
+    );
+  }
 
   async function fetchStudyMode() {
     setStudyLoading(true);
@@ -144,20 +213,59 @@ export default function HomePage() {
   }
 
   const selectedStudy = useMemo(() => studyItems.find((item) => item.id === selectedStudyId) ?? null, [studyItems, selectedStudyId]);
+  const algorithmOptions = useMemo(
+    () => algorithmDescriptors.map((item) => ({ value: item.algorithm, label: item.label })),
+    [algorithmDescriptors],
+  );
+  const selectedAlgorithmDescriptor = useMemo(
+    () => algorithmDescriptors.find((item) => item.algorithm === generateAlgorithm) ?? null,
+    [algorithmDescriptors, generateAlgorithm],
+  );
+  const generateFieldErrors = useMemo(() => {
+    const descriptor = selectedAlgorithmDescriptor;
+    if (!descriptor) return {};
+    return Object.fromEntries(
+      descriptor.fields.map((field) => [field.key, validateFieldInput(field, generateFieldInputs[field.key] ?? '')]),
+    );
+  }, [selectedAlgorithmDescriptor, generateFieldInputs]);
+  const hasGenerateValidationErrors = useMemo(() => Object.values(generateFieldErrors).some((value) => value), [generateFieldErrors]);
   const selectedSaved = useMemo(
     () => savedVisualizers.find((item) => item.id === selectedSavedId) ?? null,
     [savedVisualizers, selectedSavedId],
   );
 
+  useEffect(() => {
+    if (!selectedAlgorithmDescriptor) return;
+    const firstPreset = selectedAlgorithmDescriptor.sample_presets[0];
+    if (firstPreset) {
+      const nextInputs: Record<string, string> = {};
+      for (const field of selectedAlgorithmDescriptor.fields) {
+        nextInputs[field.key] = stringifyPresetValue(firstPreset.payload[field.key], field.type);
+      }
+      setGenerateFieldInputs(nextInputs);
+      setGenerateQuestion(firstPreset.question);
+      return;
+    }
+    setGenerateFieldInputs({});
+  }, [selectedAlgorithmDescriptor]);
+
   async function handleGenerateVisualization() {
     setGenerateError(null);
-
-    let parsedPayload: Record<string, unknown> = {};
-    try {
-      parsedPayload = generatePayloadInput.trim() ? (JSON.parse(generatePayloadInput) as Record<string, unknown>) : {};
-    } catch {
-      setGenerateError('Payload must be valid JSON.');
-      return;
+    const descriptor = selectedAlgorithmDescriptor;
+    const parsedPayload: Record<string, unknown> = {};
+    if (descriptor) {
+      for (const field of descriptor.fields) {
+        const rawValue = generateFieldInputs[field.key] ?? '';
+        const validationError = validateFieldInput(field, rawValue);
+        if (validationError) {
+          setGenerateError(`${field.label}: ${validationError}`);
+          return;
+        }
+        const parsed = parseFieldInput(field.type, rawValue);
+        if (parsed !== undefined) {
+          parsedPayload[field.key] = parsed;
+        }
+      }
     }
 
     const requestBody = {
@@ -194,6 +302,17 @@ export default function HomePage() {
         explanation: step.explanation,
       })),
     );
+  }
+
+  function applyPreset(presetPayload: Record<string, unknown>, question: string) {
+    setGenerateQuestion(question);
+    const descriptor = selectedAlgorithmDescriptor;
+    if (!descriptor) return;
+    const nextInputs: Record<string, string> = {};
+    for (const field of descriptor.fields) {
+      nextInputs[field.key] = stringifyPresetValue(presetPayload[field.key], field.type);
+    }
+    setGenerateFieldInputs(nextInputs);
   }
 
   function updateBuilderStep(idx: number, key: keyof BuilderStep, value: string) {
@@ -432,12 +551,41 @@ export default function HomePage() {
                 <Textarea value={generateQuestion} rows={2} onChange={(event) => setGenerateQuestion(event.target.value)} />
               </Label>
 
-              <Label>
-                Algorithm Payload (JSON)
-                <Textarea value={generatePayloadInput} rows={8} onChange={(event) => setGeneratePayloadInput(event.target.value)} />
-              </Label>
+              {selectedAlgorithmDescriptor?.fields.length ? (
+                <div className="space-y-3 rounded-md border border-zinc-800 bg-zinc-950/50 p-3">
+                  <h4 className="text-sm font-semibold text-zinc-200">Algorithm Inputs</h4>
+                  {selectedAlgorithmDescriptor.fields.map((field) => (
+                    <Label key={field.key}>
+                      {field.label}
+                      <Input
+                        value={generateFieldInputs[field.key] ?? ''}
+                        placeholder={field.placeholder ?? field.example ?? ''}
+                        onChange={(event) =>
+                          setGenerateFieldInputs((prev) => ({
+                            ...prev,
+                            [field.key]: event.target.value,
+                          }))
+                        }
+                      />
+                      <span className="mt-1 block text-xs text-zinc-400">Example: {field.example ?? 'See algorithm docs.'}</span>
+                      {generateFieldErrors[field.key] ? <span className="mt-1 block text-xs text-red-400">{generateFieldErrors[field.key]}</span> : null}
+                    </Label>
+                  ))}
+                  {selectedAlgorithmDescriptor.sample_presets.length > 0 ? (
+                    <div className="flex flex-wrap gap-2 pt-1">
+                      {selectedAlgorithmDescriptor.sample_presets.map((preset) => (
+                        <Button key={`${selectedAlgorithmDescriptor.algorithm}-${preset.name}`} type="button" variant="outline" onClick={() => applyPreset(preset.payload, preset.question)}>
+                          {preset.name}
+                        </Button>
+                      ))}
+                    </div>
+                  ) : null}
+                </div>
+              ) : null}
 
-              <Button onClick={handleGenerateVisualization}>Generate Visualization</Button>
+              <Button onClick={handleGenerateVisualization} disabled={hasGenerateValidationErrors}>
+                Generate Visualization
+              </Button>
               {generateError ? <p className="mb-0 text-sm text-red-400">{generateError}</p> : null}
             </div>
           </Card>

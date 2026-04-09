@@ -30,6 +30,46 @@ AlgorithmType = Literal[
     "rabin_karp",
 ]
 
+SEARCH_SORT_ALGORITHMS: set[str] = {
+    "linear_search",
+    "binary_search",
+    "jump_search",
+    "interpolation_search",
+    "bubble_sort",
+    "insertion_sort",
+    "selection_sort",
+    "merge_sort",
+    "quick_sort",
+    "heap_sort",
+}
+GRAPH_ALGORITHMS: set[str] = {"bfs", "dfs", "dijkstra", "a_star"}
+DP_TABLE_ALGORITHMS: set[str] = {"fibonacci_tabulation", "fibonacci_memoization", "knapsack_01", "lcs"}
+STRING_ALGORITHMS: set[str] = {"kmp", "rabin_karp"}
+
+
+class AlgorithmInputField(BaseModel):
+    key: str = Field(..., min_length=1)
+    label: str = Field(..., min_length=1)
+    type: Literal["number_list", "number", "string", "string_list", "edge_list", "weighted_edge_list", "matrix"]
+    required: bool = True
+    placeholder: str | None = None
+    example: str | None = None
+    help_text: str | None = None
+
+
+class AlgorithmPreset(BaseModel):
+    name: str = Field(..., min_length=1)
+    question: str = Field(..., min_length=1)
+    payload: dict[str, Any] = Field(default_factory=dict)
+
+
+class AlgorithmDescriptor(BaseModel):
+    algorithm: AlgorithmType
+    label: str = Field(..., min_length=1)
+    category: Literal["search_sort", "graph", "dp_table", "string", "other"] = "other"
+    fields: list[AlgorithmInputField] = Field(default_factory=list)
+    sample_presets: list[AlgorithmPreset] = Field(default_factory=list)
+
 
 class StepVariablesPanel(BaseModel):
     position: Literal["left", "right", "mid"] | None = None
@@ -166,6 +206,66 @@ class CustomVisualizeRequest(BaseModel):
     numbers: list[int] = Field(default_factory=list)
     target: int | None = None
     payload: dict[str, Any] = Field(default_factory=dict)
+
+    @model_validator(mode="after")
+    def validate_payload_by_algorithm(self) -> "CustomVisualizeRequest":
+        payload = self.payload or {}
+        algorithm = self.algorithm
+
+        if algorithm in SEARCH_SORT_ALGORITHMS:
+            if len(self.numbers) == 0 and not isinstance(payload.get("numbers"), list):
+                raise ValueError("Search/sort algorithms require a numbers array. Example: [3, 9, 1, 12]")
+            if "search" in algorithm and self.target is None and payload.get("target") is None:
+                raise ValueError("Search algorithms require a target value. Example: 9")
+
+        if algorithm in GRAPH_ALGORITHMS:
+            nodes = payload.get("nodes")
+            edges = payload.get("edges")
+            if not isinstance(nodes, list) or len(nodes) == 0:
+                raise ValueError("Graph algorithms require payload.nodes as a non-empty list. Example: [\"A\", \"B\", \"C\"]")
+            if not isinstance(edges, list) or len(edges) == 0:
+                raise ValueError("Graph algorithms require payload.edges as a non-empty list.")
+            has_weights = algorithm in {"dijkstra", "a_star"}
+            for edge in edges:
+                if not isinstance(edge, list):
+                    raise ValueError("Each graph edge must be a list. Example: [\"A\", \"B\"]")
+                if has_weights and len(edge) != 3:
+                    raise ValueError("Weighted graph algorithms require edges in [from, to, weight] format.")
+                if not has_weights and len(edge) < 2:
+                    raise ValueError("Unweighted graph algorithms require edges in [from, to] format.")
+
+        if algorithm in DP_TABLE_ALGORITHMS:
+            if algorithm.startswith("fibonacci"):
+                n = payload.get("n")
+                if not isinstance(n, int) or n < 0:
+                    raise ValueError("Fibonacci requires payload.n as a non-negative integer. Example: 8")
+            elif algorithm == "knapsack_01":
+                weights = payload.get("weights")
+                values = payload.get("values")
+                capacity = payload.get("capacity")
+                if not isinstance(weights, list) or not all(isinstance(item, int) for item in weights):
+                    raise ValueError("Knapsack requires payload.weights as an integer list. Example: [2, 3, 4]")
+                if not isinstance(values, list) or not all(isinstance(item, int) for item in values):
+                    raise ValueError("Knapsack requires payload.values as an integer list. Example: [4, 5, 10]")
+                if len(weights) != len(values):
+                    raise ValueError("Knapsack payload.weights and payload.values must have equal lengths.")
+                if not isinstance(capacity, int) or capacity < 0:
+                    raise ValueError("Knapsack requires payload.capacity as a non-negative integer.")
+            elif algorithm == "lcs":
+                s1 = payload.get("s1")
+                s2 = payload.get("s2")
+                if not isinstance(s1, str) or not isinstance(s2, str) or not s1 or not s2:
+                    raise ValueError("LCS requires payload.s1 and payload.s2 as non-empty strings.")
+
+        if algorithm in STRING_ALGORITHMS:
+            text = payload.get("text")
+            pattern = payload.get("pattern")
+            if not isinstance(text, str) or not text:
+                raise ValueError("String algorithms require payload.text as a non-empty string.")
+            if not isinstance(pattern, str) or not pattern:
+                raise ValueError("String algorithms require payload.pattern as a non-empty string.")
+
+        return self
 
 
 class VisualizationResponse(BaseModel):
