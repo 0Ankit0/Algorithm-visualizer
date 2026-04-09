@@ -61,3 +61,8 @@ Open `http://localhost:3000`.
 - `PUT /api/custom-visualizers/{visualizer_id}`
 - `DELETE /api/custom-visualizers/{visualizer_id}`
 - `POST /api/custom-visualizers/{visualizer_id}/run`
+
+## Explanation quality rubric
+
+Step-by-step explanation standards and merge requirements are documented in `docs/explanation-guidelines.md`.
+All existing algorithms are expected to follow that rubric, and CI checks should fail if new algorithms emit non-compliant step explanations.

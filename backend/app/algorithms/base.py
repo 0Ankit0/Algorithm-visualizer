@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Protocol
 
+from ..explanation_rubric import rubricize_legacy_explanation
 from ..models import VisualizationStep
 
 
@@ -59,7 +60,7 @@ def make_step(
             title=title,
             state=state,
             highlighted_indices=highlighted or [],
-            explanation=explanation,
+            explanation=rubricize_legacy_explanation(title, explanation),
         )
     )
 
@@ -67,4 +68,12 @@ def make_step(
 def array_or_empty(numbers: list[int], msg: str) -> list[VisualizationStep] | None:
     if numbers:
         return None
-    return [VisualizationStep(index=1, title="Empty input", state=[], highlighted_indices=[], explanation=msg)]
+    return [
+        VisualizationStep(
+            index=1,
+            title="Empty input",
+            state=[],
+            highlighted_indices=[],
+            explanation=rubricize_legacy_explanation("Empty input", msg),
+        )
+    ]

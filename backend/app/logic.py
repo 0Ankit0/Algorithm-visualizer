@@ -5,6 +5,7 @@ from collections import deque
 import heapq
 
 from .algorithms import ALGORITHM_REGISTRY
+from .explanation_rubric import rubricize_legacy_explanation
 from .algorithms.search import binary_search_steps, interpolation_search_steps, jump_search_steps, linear_search_steps
 from .algorithms.sort import bubble_sort_steps, heap_sort_steps, insertion_sort_steps, merge_sort_steps, quick_sort_steps, selection_sort_steps
 from .models import StudyItem, VisualizationResponse, VisualizationStep
@@ -17,7 +18,7 @@ def _step(steps: list[VisualizationStep], title: str, state: list[int | str], ex
             title=title,
             state=state,
             highlighted_indices=highlighted or [],
-            explanation=explanation,
+            explanation=rubricize_legacy_explanation(title, explanation),
         )
     )
 
@@ -220,7 +221,15 @@ def _heap_operations_steps(heap_type: str, initial_array: list[int], operations:
 
 def _kmp_steps(text: str, pattern: str) -> list[VisualizationStep]:
     if not pattern:
-        return [VisualizationStep(index=1, title="Invalid", state=[text], highlighted_indices=[], explanation="Pattern must be non-empty.")]
+        return [
+            VisualizationStep(
+                index=1,
+                title="Invalid",
+                state=[text],
+                highlighted_indices=[],
+                explanation=rubricize_legacy_explanation("Invalid", "Pattern must be non-empty."),
+            )
+        ]
     lps = [0] * len(pattern)
     length, i = 0, 1
     steps: list[VisualizationStep] = []
@@ -254,7 +263,17 @@ def _kmp_steps(text: str, pattern: str) -> list[VisualizationStep]:
 def _rabin_karp_steps(text: str, pattern: str, base: int = 256, mod: int = 101) -> list[VisualizationStep]:
     m, n = len(pattern), len(text)
     if m == 0 or m > n:
-        return [VisualizationStep(index=1, title="Invalid", state=[text, pattern], highlighted_indices=[], explanation="Pattern must be non-empty and not longer than text.")]
+        return [
+            VisualizationStep(
+                index=1,
+                title="Invalid",
+                state=[text, pattern],
+                highlighted_indices=[],
+                explanation=rubricize_legacy_explanation(
+                    "Invalid", "Pattern must be non-empty and not longer than text."
+                ),
+            )
+        ]
     h = pow(base, m - 1, mod)
     p_hash = 0
     t_hash = 0

@@ -4,6 +4,8 @@ from typing import Annotated, Any, Literal
 
 from pydantic import BaseModel, Field, model_validator
 
+from .explanation_rubric import is_rubric_compliant, rubricize_legacy_explanation
+
 
 AlgorithmType = Literal[
     "linear_search",
@@ -162,6 +164,12 @@ class VisualizationStep(BaseModel):
         if state_len is not None and any(i < 0 or i >= state_len for i in self.highlighted_indices):
             raise ValueError("Highlighted index must exist in the step state array.")
 
+        return self
+
+    @model_validator(mode="after")
+    def enforce_explanation_rubric(self) -> "VisualizationStep":
+        if not is_rubric_compliant(self.explanation):
+            self.explanation = rubricize_legacy_explanation(self.title, self.explanation)
         return self
 
 
