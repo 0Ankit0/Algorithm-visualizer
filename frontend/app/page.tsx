@@ -338,7 +338,72 @@ export default function HomePage() {
             </div>
           </Card>
 
-          {selectedStudy ? <StepViewer title={selectedStudy.name} query={selectedStudy.query} steps={selectedStudy.steps} /> : null}
+          {selectedStudy ? (
+            <div className="space-y-4">
+              <Card>
+                <h3 className="text-lg font-semibold">Study Guide</h3>
+                <p className="mt-2 text-sm text-zinc-300">{selectedStudy.lesson.concept_intro}</p>
+
+                <div className="mt-4 grid gap-3 md:grid-cols-2">
+                  <div className="rounded-md border border-zinc-800 bg-zinc-900/60 p-3">
+                    <h4 className="text-sm font-semibold text-zinc-100">Problem statement</h4>
+                    <p className="mt-1 text-sm text-zinc-300">{selectedStudy.lesson.problem_statement}</p>
+                  </div>
+                  <div className="rounded-md border border-zinc-800 bg-zinc-900/60 p-3">
+                    <h4 className="text-sm font-semibold text-zinc-100">Why this algorithm</h4>
+                    <p className="mt-1 text-sm text-zinc-300">{selectedStudy.lesson.why_this_algorithm}</p>
+                  </div>
+                  <div className="rounded-md border border-zinc-800 bg-zinc-900/60 p-3">
+                    <h4 className="text-sm font-semibold text-zinc-100">Step-by-step trace</h4>
+                    <p className="mt-1 text-sm text-zinc-300">{selectedStudy.lesson.step_by_step_trace}</p>
+                  </div>
+                  <div className="rounded-md border border-zinc-800 bg-zinc-900/60 p-3">
+                    <h4 className="text-sm font-semibold text-zinc-100">Final result</h4>
+                    <p className="mt-1 text-sm text-zinc-300">{selectedStudy.lesson.final_result}</p>
+                  </div>
+                  <div className="rounded-md border border-zinc-800 bg-zinc-900/60 p-3">
+                    <h4 className="text-sm font-semibold text-zinc-100">Complexity takeaway</h4>
+                    <p className="mt-1 text-sm text-zinc-300">{selectedStudy.lesson.complexity_takeaway}</p>
+                  </div>
+                  <div className="rounded-md border border-zinc-800 bg-zinc-900/60 p-3">
+                    <h4 className="text-sm font-semibold text-zinc-100">Common mistakes</h4>
+                    <p className="mt-1 text-sm text-zinc-300">{selectedStudy.lesson.common_mistakes}</p>
+                  </div>
+                </div>
+
+                <div className="mt-4 rounded-md border border-blue-900/60 bg-blue-950/30 p-3">
+                  <h4 className="text-sm font-semibold text-blue-100">Key invariants</h4>
+                  <ul className="mt-1 list-disc space-y-1 pl-5 text-sm text-blue-100/90">
+                    {selectedStudy.lesson.key_invariants.map((invariant, idx) => (
+                      <li key={`${selectedStudy.id}-invariant-${idx}`}>{invariant}</li>
+                    ))}
+                  </ul>
+                </div>
+
+                <div className="mt-3 rounded-md border border-emerald-900/60 bg-emerald-950/20 p-3">
+                  <h4 className="text-sm font-semibold text-emerald-100">Complexity card</h4>
+                  <p className="mt-1 text-sm text-emerald-100/90">{selectedStudy.lesson.complexity_card}</p>
+                </div>
+
+                <div className="mt-3 grid gap-3 md:grid-cols-2">
+                  <div className="rounded-md border border-zinc-800 bg-zinc-900/60 p-3">
+                    <h4 className="text-sm font-semibold text-zinc-100">When to use</h4>
+                    <p className="mt-1 text-sm text-zinc-300">{selectedStudy.lesson.when_to_use}</p>
+                  </div>
+                  <div className="rounded-md border border-zinc-800 bg-zinc-900/60 p-3">
+                    <h4 className="text-sm font-semibold text-zinc-100">When to avoid</h4>
+                    <p className="mt-1 text-sm text-zinc-300">{selectedStudy.lesson.when_to_avoid}</p>
+                  </div>
+                </div>
+
+                <div className="mt-3 rounded-md border border-amber-900/60 bg-amber-950/20 p-3">
+                  <h4 className="text-sm font-semibold text-amber-100">Scenario</h4>
+                  <p className="mt-1 text-sm text-amber-100/90">{selectedStudy.lesson.scenario_example}</p>
+                </div>
+              </Card>
+              <StepViewer title={selectedStudy.name} query={selectedStudy.query} steps={selectedStudy.steps} />
+            </div>
+          ) : null}
         </section>
       ) : null}
 

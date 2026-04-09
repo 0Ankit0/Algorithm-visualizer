@@ -126,6 +126,29 @@ class VisualizationStep(BaseModel):
 
 
 class StudyItem(BaseModel):
+    class StudyLesson(BaseModel):
+        problem_statement: str = Field(..., min_length=1)
+        why_this_algorithm: str = Field(..., min_length=1)
+        step_by_step_trace: str = Field(..., min_length=1)
+        final_result: str = Field(..., min_length=1)
+        complexity_takeaway: str = Field(..., min_length=1)
+        common_mistakes: str = Field(..., min_length=1)
+        concept_intro: str = Field(..., min_length=1)
+        key_invariants: list[str] = Field(..., min_length=1)
+        complexity_card: str = Field(..., min_length=1)
+        when_to_use: str = Field(..., min_length=1)
+        when_to_avoid: str = Field(..., min_length=1)
+        scenario_example: str = Field(..., min_length=1)
+
+    @model_validator(mode="after")
+    def validate_study_lesson(self) -> "StudyItem":
+        scenario = self.lesson.scenario_example.lower()
+        has_found_pair = "found" in scenario and "not-found" in scenario
+        has_best_worst = "best-case" in scenario and "worst-case" in scenario
+        if not has_found_pair and not has_best_worst:
+            raise ValueError("lesson.scenario_example must include found/not-found or best-case/worst-case.")
+        return self
+
     id: str
     name: str
     description: str
@@ -134,6 +157,7 @@ class StudyItem(BaseModel):
     summary: str
     algorithm: AlgorithmType
     steps: list[VisualizationStep]
+    lesson: StudyLesson
 
 
 class CustomVisualizeRequest(BaseModel):
