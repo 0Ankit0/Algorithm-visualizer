@@ -487,3 +487,59 @@ This document defines a structured inventory for algorithms that can be visualiz
 ```
 - Keep **Study Mode** deterministic for reproducible step-by-step playback.
 - Validate **Custom Mode** input before execution and return user-friendly errors.
+
+---
+
+## Delivery Milestones & Release Gates
+
+The delivery plan is organized into three milestones. Every milestone below includes mandatory release gates that must pass before sign-off.
+
+### Global release gates (apply to every milestone)
+For each algorithm delivered in a milestone, the following are required:
+- Algorithm is visible and selectable in **Study** mode.
+- Algorithm is visible and selectable in **Generate** mode.
+- At least **2 curated examples** are shipped and documented.
+- Explanations follow the same shared format (prerequisites, constraints, visual grammar, complexity, walkthrough).
+- No regression for existing saved visualizers (backward compatibility for persisted data + loading behavior).
+
+### Milestone 1 — Foundation + first expansion
+**Scope**
+- Architecture hardening for algorithm metadata and execution.
+- Shared schema finalized for study/generate compatibility.
+- Renderer abstraction introduced so new categories can plug in consistently.
+- Add two algorithms:
+  - **Insertion Sort**
+  - **Depth-First Search (DFS)**
+
+**Exit criteria**
+- Schema and renderer abstraction are used by new and existing algorithms.
+- Insertion Sort and DFS both pass all global release gates.
+- Existing algorithms continue to render/load without migration failures.
+
+### Milestone 2 — Breadth expansion (4–6 algorithms)
+**Scope**
+- Add 4–6 algorithms from the planned inventory, prioritized as:
+  - **Merge Sort**
+  - **Quick Sort**
+  - **Breadth-First Search (BFS)**
+  - **Dijkstra's Shortest Path**
+  - **0/1 Knapsack**
+- Keep metadata + renderer contracts unchanged unless a versioned migration is added.
+
+**Exit criteria**
+- Each newly added algorithm passes all global release gates.
+- Curated examples are pedagogically distinct (e.g., best-case/edge-case or simple/complex).
+- No breakage in previously saved visualizers created before Milestone 2.
+
+### Milestone 3 — Pedagogical polish + quality bar
+**Scope**
+- Pseudocode-step synchronization for all milestone-delivered algorithms.
+- Invariants panel integrated into Study mode.
+- Scenario presets for guided exploration.
+- Explanation quality pass against rubric.
+
+**Exit criteria**
+- Pseudocode sync accuracy is validated across all shipped algorithms.
+- Invariants panel and scenario presets are available for all milestone algorithms.
+- Explanation outputs meet the rubric and remain consistent in structure.
+- Backward compatibility checks pass for all existing saved visualizers.
