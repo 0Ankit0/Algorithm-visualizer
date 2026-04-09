@@ -99,6 +99,20 @@ export type StudyItem = {
   summary: string;
   algorithm: AlgorithmType;
   steps: VisualizationStep[];
+  lesson: {
+    problem_statement: string;
+    why_this_algorithm: string;
+    step_by_step_trace: string;
+    final_result: string;
+    complexity_takeaway: string;
+    common_mistakes: string;
+    concept_intro: string;
+    key_invariants: string[];
+    complexity_card: string;
+    when_to_use: string;
+    when_to_avoid: string;
+    scenario_example: string;
+  };
 };
 
 export type VisualizationResponse = {
