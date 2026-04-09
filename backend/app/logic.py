@@ -1,9 +1,12 @@
 from __future__ import annotations
 
+import math
 from collections import deque
 import heapq
-import math
 
+from .algorithms import ALGORITHM_REGISTRY
+from .algorithms.search import binary_search_steps, interpolation_search_steps, jump_search_steps, linear_search_steps
+from .algorithms.sort import bubble_sort_steps, heap_sort_steps, insertion_sort_steps, merge_sort_steps, quick_sort_steps, selection_sort_steps
 from .models import StudyItem, VisualizationResponse, VisualizationStep
 
 
@@ -17,241 +20,6 @@ def _step(steps: list[VisualizationStep], title: str, state: list[int | str], ex
             explanation=explanation,
         )
     )
-
-
-def _array_or_empty(numbers: list[int], msg: str) -> list[VisualizationStep] | None:
-    if numbers:
-        return None
-    return [VisualizationStep(index=1, title="Empty input", state=[], highlighted_indices=[], explanation=msg)]
-
-
-def _linear_search_steps(numbers: list[int], target: int) -> list[VisualizationStep]:
-    empty = _array_or_empty(numbers, "No items to search.")
-    if empty:
-        return empty
-    steps: list[VisualizationStep] = []
-    for i, value in enumerate(numbers):
-        _step(steps, f"Check index {i}", numbers.copy(), f"Compare {value} with target {target}.", [i])
-        if value == target:
-            _step(steps, "Found", numbers.copy(), f"Target {target} found at index {i}.", [i])
-            return steps
-    _step(steps, "Not found", numbers.copy(), f"Target {target} does not exist in the array.")
-    return steps
-
-
-def _binary_search_steps(numbers: list[int], target: int) -> list[VisualizationStep]:
-    arr = sorted(numbers)
-    empty = _array_or_empty(arr, "No items to search.")
-    if empty:
-        return empty
-    steps: list[VisualizationStep] = []
-    l, r = 0, len(arr) - 1
-    while l <= r:
-        m = (l + r) // 2
-        _step(steps, f"Window [{l}, {r}]", arr.copy(), f"mid={m}, value={arr[m]}.", [l, m, r])
-        if arr[m] == target:
-            _step(steps, "Found", arr.copy(), f"Target {target} found at index {m}.", [m])
-            return steps
-        if arr[m] < target:
-            l = m + 1
-        else:
-            r = m - 1
-    _step(steps, "Not found", arr.copy(), f"Target {target} does not exist in the array.")
-    return steps
-
-
-def _jump_search_steps(numbers: list[int], target: int) -> list[VisualizationStep]:
-    arr = sorted(numbers)
-    empty = _array_or_empty(arr, "No items to search.")
-    if empty:
-        return empty
-    steps: list[VisualizationStep] = []
-    n = len(arr)
-    jump = int(math.sqrt(n)) or 1
-    prev = 0
-    cur = jump
-    while prev < n and arr[min(cur, n) - 1] < target:
-        _step(steps, "Jump", arr.copy(), f"Jump block ending at {min(cur, n)-1} with value {arr[min(cur, n)-1]}.", [min(cur, n) - 1])
-        prev = cur
-        cur += jump
-        if prev >= n:
-            _step(steps, "Not found", arr.copy(), f"Target {target} is outside scanned blocks.")
-            return steps
-    for i in range(prev, min(cur, n)):
-        _step(steps, "Linear scan in block", arr.copy(), f"Check index {i} value {arr[i]}.", [i])
-        if arr[i] == target:
-            _step(steps, "Found", arr.copy(), f"Target {target} found at index {i}.", [i])
-            return steps
-    _step(steps, "Not found", arr.copy(), f"Target {target} not in target block.")
-    return steps
-
-
-def _interpolation_search_steps(numbers: list[int], target: int) -> list[VisualizationStep]:
-    arr = sorted(numbers)
-    empty = _array_or_empty(arr, "No items to search.")
-    if empty:
-        return empty
-    steps: list[VisualizationStep] = []
-    lo, hi = 0, len(arr) - 1
-    while lo <= hi and arr[lo] <= target <= arr[hi]:
-        if arr[lo] == arr[hi]:
-            pos = lo
-        else:
-            pos = lo + int(((target - arr[lo]) * (hi - lo)) / (arr[hi] - arr[lo]))
-        pos = max(lo, min(pos, hi))
-        _step(steps, "Probe", arr.copy(), f"Probe index {pos} value {arr[pos]} between lo={lo}, hi={hi}.", [lo, pos, hi])
-        if arr[pos] == target:
-            _step(steps, "Found", arr.copy(), f"Target {target} found at index {pos}.", [pos])
-            return steps
-        if arr[pos] < target:
-            lo = pos + 1
-        else:
-            hi = pos - 1
-    _step(steps, "Not found", arr.copy(), f"Target {target} does not exist in the array.")
-    return steps
-
-
-def _bubble_sort_steps(numbers: list[int]) -> list[VisualizationStep]:
-    arr = numbers.copy()
-    empty = _array_or_empty(arr, "No items to sort.")
-    if empty:
-        return empty
-    steps: list[VisualizationStep] = []
-    for i in range(len(arr)):
-        swapped = False
-        for j in range(0, len(arr) - i - 1):
-            if arr[j] > arr[j + 1]:
-                arr[j], arr[j + 1] = arr[j + 1], arr[j]
-                swapped = True
-                msg = "swap"
-            else:
-                msg = "no swap"
-            _step(steps, f"Pass {i+1}", arr.copy(), f"Compare indices {j},{j+1}: {msg}.", [j, j + 1])
-        if not swapped:
-            break
-    return steps
-
-
-def _insertion_sort_steps(numbers: list[int]) -> list[VisualizationStep]:
-    arr = numbers.copy()
-    steps: list[VisualizationStep] = []
-    for i in range(1, len(arr)):
-        key = arr[i]
-        j = i - 1
-        _step(steps, "Pick key", arr.copy(), f"Pick key {key} at index {i}.", [i])
-        while j >= 0 and arr[j] > key:
-            arr[j + 1] = arr[j]
-            _step(steps, "Shift right", arr.copy(), f"Shift {arr[j]} right to index {j+1}.", [j, j + 1])
-            j -= 1
-        arr[j + 1] = key
-        _step(steps, "Insert key", arr.copy(), f"Insert key {key} at index {j+1}.", [j + 1])
-    return steps or [VisualizationStep(index=1, title="Done", state=arr, highlighted_indices=[], explanation="Array already sorted or empty.")]
-
-
-def _selection_sort_steps(numbers: list[int]) -> list[VisualizationStep]:
-    arr = numbers.copy()
-    steps: list[VisualizationStep] = []
-    n = len(arr)
-    for i in range(n):
-        min_idx = i
-        for j in range(i + 1, n):
-            if arr[j] < arr[min_idx]:
-                min_idx = j
-            _step(steps, "Scan minimum", arr.copy(), f"Current min index {min_idx} value {arr[min_idx]}.", [i, j, min_idx])
-        arr[i], arr[min_idx] = arr[min_idx], arr[i]
-        _step(steps, "Place minimum", arr.copy(), f"Swap index {i} with min index {min_idx}.", [i, min_idx])
-    return steps or [VisualizationStep(index=1, title="Done", state=arr, highlighted_indices=[], explanation="Array empty.")]
-
-
-def _merge_sort_steps(numbers: list[int]) -> list[VisualizationStep]:
-    arr = numbers.copy()
-    steps: list[VisualizationStep] = []
-
-    def merge_sort(l: int, r: int) -> None:
-        if l >= r:
-            return
-        m = (l + r) // 2
-        merge_sort(l, m)
-        merge_sort(m + 1, r)
-        left = arr[l : m + 1]
-        right = arr[m + 1 : r + 1]
-        i = j = 0
-        k = l
-        while i < len(left) and j < len(right):
-            if left[i] <= right[j]:
-                arr[k] = left[i]
-                i += 1
-            else:
-                arr[k] = right[j]
-                j += 1
-            _step(steps, "Merge", arr.copy(), f"Merged position {k} for range [{l},{r}].", [k])
-            k += 1
-        while i < len(left):
-            arr[k] = left[i]
-            i += 1
-            _step(steps, "Merge left", arr.copy(), f"Copy left value into index {k}.", [k])
-            k += 1
-        while j < len(right):
-            arr[k] = right[j]
-            j += 1
-            _step(steps, "Merge right", arr.copy(), f"Copy right value into index {k}.", [k])
-            k += 1
-
-    if arr:
-        merge_sort(0, len(arr) - 1)
-    return steps or [VisualizationStep(index=1, title="Done", state=arr, highlighted_indices=[], explanation="Array empty.")]
-
-
-def _quick_sort_steps(numbers: list[int]) -> list[VisualizationStep]:
-    arr = numbers.copy()
-    steps: list[VisualizationStep] = []
-
-    def quick(l: int, r: int) -> None:
-        if l >= r:
-            return
-        pivot = arr[r]
-        i = l
-        for j in range(l, r):
-            _step(steps, "Partition compare", arr.copy(), f"Compare {arr[j]} with pivot {pivot}.", [j, r])
-            if arr[j] <= pivot:
-                arr[i], arr[j] = arr[j], arr[i]
-                _step(steps, "Swap for partition", arr.copy(), f"Move {arr[i]} before pivot zone.", [i, j])
-                i += 1
-        arr[i], arr[r] = arr[r], arr[i]
-        _step(steps, "Place pivot", arr.copy(), f"Pivot {pivot} placed at index {i}.", [i])
-        quick(l, i - 1)
-        quick(i + 1, r)
-
-    if arr:
-        quick(0, len(arr) - 1)
-    return steps or [VisualizationStep(index=1, title="Done", state=arr, highlighted_indices=[], explanation="Array empty.")]
-
-
-def _heap_sort_steps(numbers: list[int]) -> list[VisualizationStep]:
-    arr = numbers.copy()
-    steps: list[VisualizationStep] = []
-
-    def heapify(n: int, i: int) -> None:
-        largest = i
-        l = 2 * i + 1
-        r = 2 * i + 2
-        if l < n and arr[l] > arr[largest]:
-            largest = l
-        if r < n and arr[r] > arr[largest]:
-            largest = r
-        if largest != i:
-            arr[i], arr[largest] = arr[largest], arr[i]
-            _step(steps, "Heapify swap", arr.copy(), f"Swap index {i} and {largest}.", [i, largest])
-            heapify(n, largest)
-
-    n = len(arr)
-    for i in range(n // 2 - 1, -1, -1):
-        heapify(n, i)
-    for i in range(n - 1, 0, -1):
-        arr[i], arr[0] = arr[0], arr[i]
-        _step(steps, "Extract max", arr.copy(), f"Move max to sorted index {i}.", [0, i])
-        heapify(i, 0)
-    return steps or [VisualizationStep(index=1, title="Done", state=arr, highlighted_indices=[], explanation="Array empty.")]
 
 
 def _graph_state(nodes: list[str]) -> list[str]:
@@ -508,55 +276,18 @@ def _rabin_karp_steps(text: str, pattern: str, base: int = 256, mod: int = 101) 
 
 def build_custom_visualization(algorithm: str, question: str, numbers: list[int], target: int | None, payload: dict | None = None) -> VisualizationResponse:
     payload = payload or {}
-    if algorithm == "linear_search":
-        if target is None:
-            raise ValueError("Target is required for linear search.")
-        steps = _linear_search_steps(numbers, target)
-        query = f"Linear search for {target} in {numbers}"
-        summary = "Linear search checks each element left to right."
-    elif algorithm == "binary_search":
-        if target is None:
-            raise ValueError("Target is required for binary search.")
-        steps = _binary_search_steps(numbers, target)
-        query = f"Binary search for {target} in sorted({numbers})"
-        summary = "Binary search halves the sorted search space."
-    elif algorithm == "jump_search":
-        if target is None:
-            raise ValueError("Target is required for jump search.")
-        steps = _jump_search_steps(numbers, target)
-        query = f"Jump search for {target} in sorted({numbers})"
-        summary = "Jump search leaps blocks then linearly scans inside a block."
-    elif algorithm == "interpolation_search":
-        if target is None:
-            raise ValueError("Target is required for interpolation search.")
-        steps = _interpolation_search_steps(numbers, target)
-        query = f"Interpolation search for {target} in sorted({numbers})"
-        summary = "Interpolation search probes estimated positions in sorted data."
-    elif algorithm == "bubble_sort":
-        steps = _bubble_sort_steps(numbers)
-        query = f"Bubble sort for {numbers}"
-        summary = "Bubble sort swaps out-of-order adjacent pairs."
-    elif algorithm == "insertion_sort":
-        steps = _insertion_sort_steps(numbers)
-        query = f"Insertion sort for {numbers}"
-        summary = "Insertion sort grows a sorted prefix by inserting keys."
-    elif algorithm == "selection_sort":
-        steps = _selection_sort_steps(numbers)
-        query = f"Selection sort for {numbers}"
-        summary = "Selection sort repeatedly chooses the next minimum."
-    elif algorithm == "merge_sort":
-        steps = _merge_sort_steps(numbers)
-        query = f"Merge sort for {numbers}"
-        summary = "Merge sort recursively splits and merges subarrays."
-    elif algorithm == "quick_sort":
-        steps = _quick_sort_steps(numbers)
-        query = f"Quick sort for {numbers}"
-        summary = "Quick sort partitions around pivots recursively."
-    elif algorithm == "heap_sort":
-        steps = _heap_sort_steps(numbers)
-        query = f"Heap sort for {numbers}"
-        summary = "Heap sort uses heapify plus repeated root extraction."
-    elif algorithm == "bfs":
+    visualizer = ALGORITHM_REGISTRY.get(algorithm)
+    if visualizer is not None:
+        result = visualizer.visualize(numbers=numbers, target=target, payload=payload)
+        return VisualizationResponse(
+            algorithm=algorithm,
+            question=question,
+            query=result.metadata.query,
+            summary=result.metadata.summary,
+            steps=result.steps,
+        )
+
+    if algorithm == "bfs":
         nodes = payload.get("nodes", [])
         edges = payload.get("edges", [])
         start = payload.get("start")
@@ -650,16 +381,16 @@ def build_custom_visualization(algorithm: str, question: str, numbers: list[int]
 
 def study_mode_items() -> list[StudyItem]:
     return [
-        StudyItem(id="study-linear-search", name="Linear Search", description="Check each element until target match.", question="Where is 7?", query="Linear search", summary="Sequential scan.", algorithm="linear_search", steps=_linear_search_steps([7, 2, 9, 4, 1, 8], 4)),
-        StudyItem(id="study-binary-search", name="Binary Search", description="Repeatedly halve sorted search range.", question="Can we find 9?", query="Binary search", summary="Halving strategy.", algorithm="binary_search", steps=_binary_search_steps([1, 3, 5, 7, 9, 11, 13], 9)),
-        StudyItem(id="study-jump-search", name="Jump Search", description="Jump blocks then linear scan.", question="Can we find 18?", query="Jump search", summary="Block jumping strategy.", algorithm="jump_search", steps=_jump_search_steps([1, 3, 6, 8, 11, 14, 18, 21, 25, 30], 18)),
-        StudyItem(id="study-interpolation-search", name="Interpolation Search", description="Probe estimated index in sorted data.", question="Can we find 60?", query="Interpolation search", summary="Estimate target position.", algorithm="interpolation_search", steps=_interpolation_search_steps([10, 20, 30, 40, 50, 60, 70, 80], 60)),
-        StudyItem(id="study-bubble-sort", name="Bubble Sort", description="Adjacent compares and swaps.", question="Sort this array.", query="Bubble sort", summary="Repeated adjacent swapping.", algorithm="bubble_sort", steps=_bubble_sort_steps([5, 1, 4, 2, 8])),
-        StudyItem(id="study-insertion-sort", name="Insertion Sort", description="Grow sorted prefix.", question="Sort this array.", query="Insertion sort", summary="Insert keys into sorted prefix.", algorithm="insertion_sort", steps=_insertion_sort_steps([9, 5, 1, 4, 3])),
-        StudyItem(id="study-selection-sort", name="Selection Sort", description="Select min each pass.", question="Sort this array.", query="Selection sort", summary="Repeated minimum placement.", algorithm="selection_sort", steps=_selection_sort_steps([64, 25, 12, 22, 11])),
-        StudyItem(id="study-merge-sort", name="Merge Sort", description="Divide then merge.", question="Sort this array.", query="Merge sort", summary="Divide-and-conquer merge.", algorithm="merge_sort", steps=_merge_sort_steps([38, 27, 43, 3, 9, 82, 10])),
-        StudyItem(id="study-quick-sort", name="Quick Sort", description="Partition around pivots.", question="Sort this array.", query="Quick sort", summary="Partition recursively.", algorithm="quick_sort", steps=_quick_sort_steps([10, 7, 8, 9, 1, 5])),
-        StudyItem(id="study-heap-sort", name="Heap Sort", description="Heapify then extract.", question="Sort this array.", query="Heap sort", summary="Heap-based sorting.", algorithm="heap_sort", steps=_heap_sort_steps([12, 11, 13, 5, 6, 7])),
+        StudyItem(id="study-linear-search", name="Linear Search", description="Check each element until target match.", question="Where is 7?", query="Linear search", summary="Sequential scan.", algorithm="linear_search", steps=linear_search_steps([7, 2, 9, 4, 1, 8], 4)),
+        StudyItem(id="study-binary-search", name="Binary Search", description="Repeatedly halve sorted search range.", question="Can we find 9?", query="Binary search", summary="Halving strategy.", algorithm="binary_search", steps=binary_search_steps([1, 3, 5, 7, 9, 11, 13], 9)),
+        StudyItem(id="study-jump-search", name="Jump Search", description="Jump blocks then linear scan.", question="Can we find 18?", query="Jump search", summary="Block jumping strategy.", algorithm="jump_search", steps=jump_search_steps([1, 3, 6, 8, 11, 14, 18, 21, 25, 30], 18)),
+        StudyItem(id="study-interpolation-search", name="Interpolation Search", description="Probe estimated index in sorted data.", question="Can we find 60?", query="Interpolation search", summary="Estimate target position.", algorithm="interpolation_search", steps=interpolation_search_steps([10, 20, 30, 40, 50, 60, 70, 80], 60)),
+        StudyItem(id="study-bubble-sort", name="Bubble Sort", description="Adjacent compares and swaps.", question="Sort this array.", query="Bubble sort", summary="Repeated adjacent swapping.", algorithm="bubble_sort", steps=bubble_sort_steps([5, 1, 4, 2, 8])),
+        StudyItem(id="study-insertion-sort", name="Insertion Sort", description="Grow sorted prefix.", question="Sort this array.", query="Insertion sort", summary="Insert keys into sorted prefix.", algorithm="insertion_sort", steps=insertion_sort_steps([9, 5, 1, 4, 3])),
+        StudyItem(id="study-selection-sort", name="Selection Sort", description="Select min each pass.", question="Sort this array.", query="Selection sort", summary="Repeated minimum placement.", algorithm="selection_sort", steps=selection_sort_steps([64, 25, 12, 22, 11])),
+        StudyItem(id="study-merge-sort", name="Merge Sort", description="Divide then merge.", question="Sort this array.", query="Merge sort", summary="Divide-and-conquer merge.", algorithm="merge_sort", steps=merge_sort_steps([38, 27, 43, 3, 9, 82, 10])),
+        StudyItem(id="study-quick-sort", name="Quick Sort", description="Partition around pivots.", question="Sort this array.", query="Quick sort", summary="Partition recursively.", algorithm="quick_sort", steps=quick_sort_steps([10, 7, 8, 9, 1, 5])),
+        StudyItem(id="study-heap-sort", name="Heap Sort", description="Heapify then extract.", question="Sort this array.", query="Heap sort", summary="Heap-based sorting.", algorithm="heap_sort", steps=heap_sort_steps([12, 11, 13, 5, 6, 7])),
         StudyItem(id="study-bfs", name="BFS", description="Traverse by frontier level.", question="Traverse from A.", query="BFS", summary="Queue-based graph traversal.", algorithm="bfs", steps=_bfs_steps(["A", "B", "C", "D", "E"], [["A", "B"], ["A", "C"], ["B", "D"], ["C", "E"]], "A")),
         StudyItem(id="study-dfs", name="DFS", description="Depth-first traversal.", question="Traverse from A.", query="DFS", summary="Stack/recursion traversal.", algorithm="dfs", steps=_dfs_steps(["A", "B", "C", "D", "E"], [["A", "B"], ["A", "C"], ["B", "D"], ["C", "E"]], "A")),
         StudyItem(id="study-dijkstra", name="Dijkstra", description="Shortest paths with non-negative weights.", question="Distances from A.", query="Dijkstra", summary="Relaxation with min-heap.", algorithm="dijkstra", steps=_dijkstra_steps(["A", "B", "C", "D"], [["A", "B", 1], ["A", "C", 4], ["B", "C", 2], ["B", "D", 5], ["C", "D", 1]], "A")),
