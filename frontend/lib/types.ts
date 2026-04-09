@@ -1,9 +1,31 @@
-export type AlgorithmType = 'linear_search' | 'binary_search' | 'bubble_sort';
+export type AlgorithmType =
+  | 'linear_search'
+  | 'binary_search'
+  | 'jump_search'
+  | 'interpolation_search'
+  | 'bubble_sort'
+  | 'insertion_sort'
+  | 'selection_sort'
+  | 'merge_sort'
+  | 'quick_sort'
+  | 'heap_sort'
+  | 'bfs'
+  | 'dfs'
+  | 'dijkstra'
+  | 'a_star'
+  | 'fibonacci_tabulation'
+  | 'fibonacci_memoization'
+  | 'knapsack_01'
+  | 'lcs'
+  | 'bst_operations'
+  | 'heap_operations'
+  | 'kmp'
+  | 'rabin_karp';
 
 export type VisualizationStep = {
   index: number;
   title: string;
-  state: number[];
+  state: Array<number | string>;
   explanation: string;
   highlighted_indices: number[];
 };
