@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
-import type { VisualizationStep } from '@/lib/types';
+import { getStepHighlightedIndices, getStepValues, type VisualizationStep } from '@/lib/types';
 
 type StepViewerProps = {
   title: string;
@@ -42,12 +42,12 @@ export function StepViewer({ title, query, steps }: StepViewerProps) {
       <p className="mt-2 text-sm text-zinc-200">{step.explanation}</p>
 
       <div className="mt-3 flex flex-wrap gap-2">
-        {step.state.map((value, idx) => (
+        {getStepValues(step.state).map((value, idx) => (
           <div
             key={`${step.index}-${idx}`}
             className={cn(
               'min-w-11 rounded-md border border-transparent bg-zinc-800 px-3 py-2 text-center text-sm',
-              step.highlighted_indices.includes(idx) && 'border-blue-400 bg-blue-900/70',
+              getStepHighlightedIndices(step).includes(idx) && 'border-blue-400 bg-blue-900/70',
             )}
           >
             {value}

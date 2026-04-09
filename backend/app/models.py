@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, Literal
+from typing import Annotated, Any, Literal
 
 from pydantic import BaseModel, Field, model_validator
 
@@ -31,12 +31,98 @@ AlgorithmType = Literal[
 ]
 
 
+class StepVariablesPanel(BaseModel):
+    position: Literal["left", "right", "mid"] | None = None
+    left: int | float | str | None = None
+    right: int | float | str | None = None
+    mid: int | float | str | None = None
+    distance_map: dict[str, int | float] = Field(default_factory=dict)
+    heap_size: int | None = None
+    values: dict[str, Any] = Field(default_factory=dict)
+
+
+class ArrayStatePayload(BaseModel):
+    kind: Literal["array_state"]
+    values: list[int | str]
+    highlighted_indices: list[int] = Field(default_factory=list)
+    variables: StepVariablesPanel | None = None
+
+
+class GraphStatePayload(BaseModel):
+    kind: Literal["graph_state"]
+    nodes: list[str | int | dict[str, Any]]
+    edges: list[list[Any] | dict[str, Any]]
+    active_nodes: list[str | int] = Field(default_factory=list)
+    active_edges: list[list[Any] | dict[str, Any] | str | int] = Field(default_factory=list)
+    variables: StepVariablesPanel | None = None
+
+
+class MatrixCellHighlight(BaseModel):
+    row: int = Field(..., ge=0)
+    col: int = Field(..., ge=0)
+
+
+class MatrixStatePayload(BaseModel):
+    kind: Literal["matrix_state"]
+    cells: list[list[int | str]]
+    highlighted_cells: list[MatrixCellHighlight] = Field(default_factory=list)
+    variables: StepVariablesPanel | None = None
+
+
+class TreeStatePayload(BaseModel):
+    kind: Literal["tree_state"]
+    nodes: list[dict[str, Any] | str | int]
+    links: list[dict[str, Any] | list[Any]]
+    active_path: list[str | int] = Field(default_factory=list)
+    variables: StepVariablesPanel | None = None
+
+
+StepStatePayload = Annotated[
+    ArrayStatePayload | GraphStatePayload | MatrixStatePayload | TreeStatePayload,
+    Field(discriminator="kind"),
+]
+LegacyArrayState = list[int | str]
+
+
 class VisualizationStep(BaseModel):
     index: int = Field(..., description="Step number starting at 1", ge=1)
     title: str = Field(..., min_length=1)
-    state: list[int | str]
+    state: LegacyArrayState | StepStatePayload
     explanation: str = Field(..., min_length=1)
     highlighted_indices: list[int] = Field(default_factory=list)
+
+    @model_validator(mode="before")
+    @classmethod
+    def migrate_state_payload(cls, values: Any) -> Any:
+        if not isinstance(values, dict):
+            return values
+
+        state = values.get("state")
+        highlighted = values.get("highlighted_indices")
+        if isinstance(state, dict):
+            if "kind" not in state and "values" in state:
+                state = {"kind": "array_state", **state}
+                values["state"] = state
+            if state.get("kind") == "array_state" and highlighted is None:
+                values["highlighted_indices"] = list(state.get("highlighted_indices", []))
+        return values
+
+    @model_validator(mode="after")
+    def normalize_highlights(self) -> "VisualizationStep":
+        state_len: int | None = None
+        if isinstance(self.state, list):
+            state_len = len(self.state)
+        elif isinstance(self.state, ArrayStatePayload):
+            state_len = len(self.state.values)
+            merged_highlights = self.highlighted_indices or self.state.highlighted_indices
+            self.highlighted_indices = merged_highlights
+            if not self.state.highlighted_indices:
+                self.state.highlighted_indices = merged_highlights
+
+        if state_len is not None and any(i < 0 or i >= state_len for i in self.highlighted_indices):
+            raise ValueError("Highlighted index must exist in the step state array.")
+
+        return self
 
 
 class StudyItem(BaseModel):
@@ -80,8 +166,6 @@ class CustomVisualizerBase(BaseModel):
         for step in self.steps:
             if step.index != expected_idx:
                 raise ValueError("Steps must be sequential and start at index 1.")
-            if any(i < 0 or i >= len(step.state) for i in step.highlighted_indices):
-                raise ValueError("Highlighted index must exist in the step state array.")
             expected_idx += 1
         return self
 

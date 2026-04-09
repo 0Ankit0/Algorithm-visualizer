@@ -16,11 +16,75 @@ class CustomVisualizerStore:
         if not self.file_path.exists():
             self.file_path.write_text("[]", encoding="utf-8")
 
+    def _migrate_step(self, step: dict[str, Any]) -> tuple[dict[str, Any], bool]:
+        migrated = dict(step)
+        changed = False
+
+        state = migrated.get("state")
+        highlighted = migrated.get("highlighted_indices")
+
+        if isinstance(state, list):
+            migrated["state"] = {
+                "kind": "array_state",
+                "values": state,
+                "highlighted_indices": highlighted if isinstance(highlighted, list) else [],
+            }
+            migrated.setdefault("highlighted_indices", highlighted if isinstance(highlighted, list) else [])
+            changed = True
+        elif isinstance(state, dict) and "values" in state and "kind" not in state:
+            migrated["state"] = {"kind": "array_state", **state}
+            changed = True
+
+        state = migrated.get("state")
+        if isinstance(state, dict) and state.get("kind") == "array_state":
+            if "highlighted_indices" not in state:
+                state["highlighted_indices"] = migrated.get("highlighted_indices", [])
+                changed = True
+            if "highlighted_indices" not in migrated:
+                migrated["highlighted_indices"] = state.get("highlighted_indices", [])
+                changed = True
+
+        return migrated, changed
+
+    def _migrate_item(self, item: dict[str, Any]) -> tuple[dict[str, Any], bool]:
+        migrated = dict(item)
+        changed = False
+        steps = migrated.get("steps")
+        if not isinstance(steps, list):
+            return migrated, False
+
+        new_steps: list[Any] = []
+        for step in steps:
+            if isinstance(step, dict):
+                migrated_step, migrated_changed = self._migrate_step(step)
+                new_steps.append(migrated_step)
+                changed = changed or migrated_changed
+            else:
+                new_steps.append(step)
+
+        if changed:
+            migrated["steps"] = new_steps
+        return migrated, changed
+
     def _read(self) -> list[dict[str, Any]]:
         data = json.loads(self.file_path.read_text(encoding="utf-8"))
         if not isinstance(data, list):
             return []
-        return data
+
+        changed = False
+        migrated_data: list[dict[str, Any]] = []
+        for item in data:
+            if isinstance(item, dict):
+                migrated_item, item_changed = self._migrate_item(item)
+                migrated_data.append(migrated_item)
+                changed = changed or item_changed
+            else:
+                migrated_data.append(item)
+
+        if changed:
+            self._write(migrated_data)
+
+        return migrated_data
 
     def _write(self, payload: list[dict[str, Any]]) -> None:
         self.file_path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
