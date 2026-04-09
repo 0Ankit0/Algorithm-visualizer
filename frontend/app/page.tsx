@@ -10,14 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import type {
-  AlgorithmType,
-  CreateCustomVisualizerRequest,
-  CustomVisualizer,
-  StudyItem,
-  VisualizationResponse,
-  VisualizationStep,
-} from '@/lib/types';
+import { getStepHighlightedIndices, getStepValues, type AlgorithmType, type CreateCustomVisualizerRequest, type CustomVisualizer, type StudyItem, type VisualizationResponse, type VisualizationStep } from '@/lib/types';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? 'http://localhost:8000';
 
@@ -196,8 +189,8 @@ export default function HomePage() {
     setBuilderSteps(
       (data as VisualizationResponse).steps.map((step) => ({
         title: step.title,
-        stateInput: step.state.join(', '),
-        highlightedInput: step.highlighted_indices.join(', '),
+        stateInput: getStepValues(step.state).join(', '),
+        highlightedInput: getStepHighlightedIndices(step).join(', '),
         explanation: step.explanation,
       })),
     );
@@ -237,7 +230,7 @@ export default function HomePage() {
       return;
     }
 
-    if (steps.some((step) => !step.title.trim() || !step.explanation.trim() || step.state.length === 0)) {
+    if (steps.some((step) => !step.title.trim() || !step.explanation.trim() || getStepValues(step.state).length === 0)) {
       setBuilderMessage('Each step needs a title, explanation, and at least one state value.');
       return;
     }
