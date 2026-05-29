@@ -1,5 +1,3 @@
-'use client';
-
 import { useEffect, useMemo, useState } from 'react';
 
 import { Badge } from '@/components/ui/badge';
@@ -21,7 +19,10 @@ type StepViewerProps = {
   title: string;
   query: string;
   steps: VisualizationStep[];
+  runMode?: PlaybackMode;
 };
+
+export type PlaybackMode = 'once' | 'loop' | 'step';
 
 type RendererProps = {
   step: VisualizationStep;
@@ -38,6 +39,11 @@ type VariableEntry = {
 type PseudocodeData = {
   lines: string[];
   currentLine: number | null;
+};
+
+type NodePosition = {
+  x: number;
+  y: number;
 };
 
 function formatValue(value: unknown): string {
@@ -207,6 +213,77 @@ function summarizeStepDiff(previousStep: VisualizationStep | undefined, step: Vi
   return ['State changed, but a detailed diff is unavailable for this step type transition.'];
 }
 
+function parseGraphEdge(edge: unknown): { from: string; to: string } | null {
+  if (Array.isArray(edge) && edge.length >= 2) {
+    return { from: formatValue(edge[0]), to: formatValue(edge[1]) };
+  }
+
+  if (edge && typeof edge === 'object') {
+    const maybe = edge as Record<string, unknown>;
+    const from = maybe.from ?? maybe.source ?? maybe.u;
+    const to = maybe.to ?? maybe.target ?? maybe.v;
+    if (from !== undefined && to !== undefined) {
+      return { from: formatValue(from), to: formatValue(to) };
+    }
+  }
+
+  if (typeof edge === 'string' && edge.includes('-')) {
+    const [from, to] = edge.split('-', 2).map((part) => part.trim());
+    if (from && to) {
+      return { from, to };
+    }
+  }
+
+  return null;
+}
+
+function getCircularNodePositions(labels: string[]): Record<string, NodePosition> {
+  const radius = 110;
+  const center = 140;
+  const count = Math.max(labels.length, 1);
+  const map: Record<string, NodePosition> = {};
+
+  labels.forEach((label, idx) => {
+    const angle = ((Math.PI * 2) / count) * idx - Math.PI / 2;
+    map[label] = {
+      x: center + radius * Math.cos(angle),
+      y: center + radius * Math.sin(angle),
+    };
+  });
+
+  return map;
+}
+
+function NumericArrayBars({ values, highlighted, stepIndex }: { values: number[]; highlighted: number[]; stepIndex: number }) {
+  const maxAbs = Math.max(...values.map((value) => Math.abs(value)), 1);
+
+  return (
+    <div className="mt-4">
+      <p className="mb-2 text-sm text-zinc-400">Visual bars</p>
+      <div className="grid auto-rows-fr grid-flow-col gap-2 overflow-x-auto rounded-md border border-zinc-800 bg-zinc-950/60 p-3">
+        {values.map((value, idx) => {
+          const height = Math.max(12, Math.round((Math.abs(value) / maxAbs) * 120));
+          const isHighlighted = highlighted.includes(idx);
+          return (
+            <div key={`bar-${stepIndex}-${idx}`} className="flex min-w-11 flex-col items-center justify-end gap-1">
+              <div
+                className={cn(
+                  'w-full rounded-t-sm transition-all',
+                  isHighlighted ? 'bg-blue-500 shadow-[0_0_0_1px_rgba(96,165,250,0.6)]' : 'bg-zinc-600',
+                )}
+                style={{ height }}
+                title={`Index ${idx}: ${value}`}
+              />
+              <span className="text-xs text-zinc-300">{value}</span>
+              <span className="text-[11px] text-zinc-500">[{idx}]</span>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 function TeachingElements({ step, previousStep, stepIndex, totalSteps }: RendererProps) {
   const variables = getVariables(step);
   const variableEntries = collectVariableEntries(variables);
@@ -274,10 +351,13 @@ function TeachingElements({ step, previousStep, stepIndex, totalSteps }: Rendere
 function ArrayStepRenderer(props: RendererProps) {
   const { step } = props;
   const highlighted = getStepHighlightedIndices(step);
+  const rawValues = getStepValues(step.state);
+  const allNumbers = rawValues.every((value) => typeof value === 'number');
+
   return (
     <div>
       <div className="mt-3 flex flex-wrap gap-2">
-        {getStepValues(step.state).map((value, idx) => (
+        {rawValues.map((value, idx) => (
           <div
             key={`${step.index}-${idx}`}
             className={cn(
@@ -289,6 +369,7 @@ function ArrayStepRenderer(props: RendererProps) {
           </div>
         ))}
       </div>
+      {allNumbers ? <NumericArrayBars values={rawValues as number[]} highlighted={highlighted} stepIndex={step.index} /> : null}
       <TeachingElements {...props} />
     </div>
   );
@@ -297,9 +378,45 @@ function ArrayStepRenderer(props: RendererProps) {
 function GraphStepRenderer(props: RendererProps) {
   const { step } = props;
   const state = Array.isArray(step.state) ? null : (step.state as GraphStatePayload);
+  const nodeLabels = (state?.nodes ?? []).map((node) => formatValue(node));
+  const activeNodes = new Set((state?.active_nodes ?? []).map((node) => formatValue(node)));
+  const positions = getCircularNodePositions(nodeLabels);
+  const edges = (state?.edges ?? []).map((edge) => parseGraphEdge(edge)).filter((edge): edge is { from: string; to: string } => edge !== null);
 
   return (
     <div>
+      <div className="mt-3 rounded-md border border-zinc-800 bg-zinc-950/60 p-3">
+        <p className="mb-2 text-sm text-zinc-400">Graph view</p>
+        <svg viewBox="0 0 280 280" className="h-72 w-full">
+          {edges.map((edge, idx) => {
+            const from = positions[edge.from];
+            const to = positions[edge.to];
+            if (!from || !to) return null;
+            return <line key={`edge-${step.index}-${idx}`} x1={from.x} y1={from.y} x2={to.x} y2={to.y} stroke="#3f3f46" strokeWidth="2" />;
+          })}
+
+          {nodeLabels.map((label, idx) => {
+            const pos = positions[label];
+            const isActive = activeNodes.has(label);
+            return (
+              <g key={`node-${step.index}-${idx}`}>
+                <circle
+                  cx={pos.x}
+                  cy={pos.y}
+                  r="18"
+                  className={cn(isActive ? 'fill-blue-500' : 'fill-zinc-700')}
+                  stroke={isActive ? '#93c5fd' : '#71717a'}
+                  strokeWidth="2"
+                />
+                <text x={pos.x} y={pos.y + 4} textAnchor="middle" fill="#f4f4f5" fontSize="12" fontWeight="600">
+                  {label}
+                </text>
+              </g>
+            );
+          })}
+        </svg>
+      </div>
+
       <div className="mt-3 space-y-3 text-sm">
         <div>
           <p className="mb-1 text-zinc-400">Nodes</p>
@@ -417,12 +534,51 @@ function renderStepByState(props: RendererProps) {
   return <Renderer {...props} />;
 }
 
-export function StepViewer({ title, query, steps }: StepViewerProps) {
+export function StepViewer({ title, query, steps, runMode = 'once' }: StepViewerProps) {
   const [currentStep, setCurrentStep] = useState(0);
+  const [isPlaying, setIsPlaying] = useState(runMode !== 'step');
+  const [intervalMs, setIntervalMs] = useState(1200);
 
   useEffect(() => {
     setCurrentStep(0);
-  }, [steps]);
+    setIsPlaying(runMode !== 'step');
+  }, [steps, runMode]);
+
+  useEffect(() => {
+    if (runMode === 'step') {
+      setIsPlaying(false);
+      return;
+    }
+
+    if (currentStep < steps.length - 1) {
+      setIsPlaying(true);
+    }
+  }, [runMode, currentStep, steps.length]);
+
+  useEffect(() => {
+    if (!isPlaying || steps.length <= 1) {
+      return;
+    }
+
+    if (runMode === 'step') {
+      return;
+    }
+
+    if (currentStep >= steps.length - 1) {
+      if (runMode === 'loop') {
+        setCurrentStep(0);
+        return;
+      }
+      setIsPlaying(false);
+      return;
+    }
+
+    const timer = window.setTimeout(() => {
+      setCurrentStep((prev) => Math.min(prev + 1, steps.length - 1));
+    }, intervalMs);
+
+    return () => window.clearTimeout(timer);
+  }, [isPlaying, currentStep, intervalMs, steps.length, runMode]);
 
   const step = useMemo(() => steps[currentStep], [steps, currentStep]);
   const previousStep = currentStep > 0 ? steps[currentStep - 1] : undefined;
@@ -452,12 +608,42 @@ export function StepViewer({ title, query, steps }: StepViewerProps) {
         totalSteps: steps.length,
       })}
 
-      <div className="mt-4 flex gap-2">
-        <Button variant="outline" onClick={() => setCurrentStep((prev) => Math.max(prev - 1, 0))}>
-          Previous
+      <div className="mt-4 flex flex-wrap items-end gap-3">
+        <label className="grid gap-1 text-sm text-zinc-300">
+          Step Interval
+          <select
+            value={String(intervalMs)}
+            onChange={(event) => setIntervalMs(Number(event.target.value))}
+            className="w-44 rounded-md border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-blue-500"
+          >
+            <option value="400">0.4s (Very Fast)</option>
+            <option value="800">0.8s (Fast)</option>
+            <option value="1200">1.2s (Normal)</option>
+            <option value="1800">1.8s (Slow)</option>
+            <option value="2600">2.6s (Very Slow)</option>
+          </select>
+        </label>
+
+        <Button
+          variant={isPlaying ? 'outline' : 'default'}
+          onClick={() => setIsPlaying((prev) => !prev)}
+          disabled={runMode === 'step'}
+        >
+          {isPlaying ? 'Pause' : 'Play'}
         </Button>
-        <Button variant="default" onClick={() => setCurrentStep((prev) => Math.min(prev + 1, steps.length - 1))}>
-          Next
+        {runMode === 'step' ? (
+          <Button variant="default" onClick={() => setCurrentStep((prev) => Math.min(prev + 1, steps.length - 1))}>
+            Next Step
+          </Button>
+        ) : null}
+        <Button
+          variant="secondary"
+          onClick={() => {
+            setCurrentStep(0);
+            setIsPlaying(runMode !== 'step');
+          }}
+        >
+          Restart
         </Button>
       </div>
       <small className="mt-2 block text-zinc-400">
